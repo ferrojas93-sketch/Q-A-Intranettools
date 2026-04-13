@@ -311,6 +311,8 @@ def main() -> int:
         return _cmd_open_chrome(args[1:])
     if cmd == "parse-har":
         return _cmd_parse_har(args[1:])
+    if cmd == "extract-data":
+        return _cmd_extract_data(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
     console.print(
@@ -319,9 +321,81 @@ def main() -> int:
         "dump-html [--url URL] [--output PATH]|"
         "capture-network [--output PATH]|"
         "open-chrome [--port N] [--chrome-path PATH]|"
-        "parse-har <har_path> [--bodies-dir DIR] [--all]]"
+        "parse-har <har_path> [--bodies-dir DIR] [--all]|"
+        "extract-data [--bodies-dir DIR] [--output JSON]]"
     )
     return 1
+
+
+def _cmd_extract_data(argv: list[str]) -> int:
+    """Parse every QES body saved in a bodies directory and summarise tables."""
+    import argparse
+    import json
+    from pathlib import Path
+
+    from qa_intranet.dsr_parser import summarise_directory
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet extract-data",
+        description=(
+            "Walk a bodies directory (produced by parse-har) and decode every "
+            "Power BI DSR response into tabular rows. Writes a summary JSON "
+            "with column names, row counts and a small sample per table."
+        ),
+    )
+    parser.add_argument(
+        "--bodies-dir",
+        default="network_bodies",
+        help="Directory produced by parse-har (default: network_bodies)",
+    )
+    parser.add_argument(
+        "--output",
+        default="extracted_tables.json",
+        help="Path to write the summary JSON (default: extracted_tables.json)",
+    )
+    opts = parser.parse_args(argv)
+
+    bodies = Path(opts.bodies_dir)
+    if not bodies.exists():
+        console.print(f"[red]Bodies dir not found:[/red] {bodies}")
+        return 1
+
+    summary = summarise_directory(bodies)
+    Path(opts.output).write_text(
+        json.dumps(summary, ensure_ascii=False, indent=2, default=str),
+        encoding="utf-8",
+    )
+
+    total_tables = sum(1 for s in summary if "columns" in s)
+    total_rows = sum(s.get("row_count", 0) for s in summary if "columns" in s)
+    errors = [s for s in summary if "error" in s]
+
+    console.print(
+        f"[green]Parsed {total_tables} tables[/green] "
+        f"([bold]{total_rows:,}[/bold] rows total) from "
+        f"{len([s for s in summary if 'file' in s])} files."
+    )
+    if errors:
+        console.print(f"[yellow]{len(errors)} files failed to parse[/yellow]")
+        for err in errors[:5]:
+            console.print(f"  {err['file']}: {err['error']}")
+    console.print(f"[cyan]Summary written to[/cyan] {Path(opts.output).resolve()}")
+
+    # Show top 5 tables by row count
+    populated = sorted(
+        [s for s in summary if s.get("row_count", 0) > 0],
+        key=lambda s: s["row_count"],
+        reverse=True,
+    )
+    if populated:
+        console.print("\n[bold]Top tables (by row count):[/bold]")
+        for s in populated[:5]:
+            console.print(
+                f"  [magenta]{s['file']}[/magenta] · "
+                f"{s['row_count']} rows · "
+                f"cols={', '.join(s['columns'])[:100]}"
+            )
+    return 0
 
 
 def _cmd_parse_har(argv: list[str]) -> int:
