@@ -203,62 +203,6 @@ def capture_network(output_path: Path) -> dict:
 
         captured.append(entry)
 
-    def handle_data_route(route):
-        request = route.request
-        try:
-            # Playwright performs the request itself from its Node side,
-            # then we hand the response back to the page. This gives us the
-            # body even when the Power BI iframe closes immediately after.
-            api_response = route.fetch()
-        except Exception as exc:  # noqa: BLE001
-            print(f"  [capture] route.fetch failed: {exc}")
-            try:
-                route.continue_()
-            except Exception:
-                pass
-            return
-
-        try:
-            body_bytes = api_response.body()
-        except Exception as exc:  # noqa: BLE001
-            body_bytes = None
-            print(f"  [capture] api_response.body failed: {exc}")
-
-        if body_bytes:
-            bodies_dir.mkdir(parents=True, exist_ok=True)
-            body_counter["n"] += 1
-            digest = hashlib.sha1(
-                request.url.encode("utf-8") + str(body_counter["n"]).encode()
-            ).hexdigest()[:12]
-            ct = api_response.headers.get("content-type", "")
-            ext = ".json" if "json" in ct.lower() else ".bin"
-            fname = f"{body_counter['n']:04d}_route_{digest}{ext}"
-            (bodies_dir / fname).write_bytes(body_bytes)
-            short = request.url.split("?")[0][-80:]
-            print(
-                f"  [capture] route saved {fname} ({len(body_bytes):,}B) "
-                f"← {request.method} {short}"
-            )
-            seen_api_urls.add(request.url.split("?")[0])
-            captured.append({
-                "kind": "route_response",
-                "method": request.method,
-                "url": request.url,
-                "status": api_response.status,
-                "content_type": ct,
-                "body_file": str((bodies_dir / fname).resolve()),
-                "body_bytes": len(body_bytes),
-            })
-
-        try:
-            route.fulfill(response=api_response)
-        except Exception as exc:  # noqa: BLE001
-            # If fulfill fails (e.g. iframe already gone) we still kept the body.
-            try:
-                route.continue_()
-            except Exception:
-                pass
-
     with get_context(headless=False) as (_, context):
         # Collect every BrowserContext we can see.
         browser = getattr(context, "browser", None)
@@ -266,22 +210,101 @@ def capture_network(output_path: Path) -> dict:
         if context not in all_contexts:
             all_contexts.append(context)
 
+        # Per-page: attach a CDP session, enable Network domain, and hook
+        # Network.loadingFinished to fetch the response body directly from
+        # Chrome's own cache. This never interferes with Power BI's iframe
+        # because we don't intercept — we just observe.
+        import base64 as _b64
+
+        interesting_requests: dict[str, dict] = {}  # requestId → {url, method, frameId}
+        cdp_sessions: list = []
+
+        def attach_cdp_to_page(page):
+            try:
+                client = page.context.new_cdp_session(page)
+            except Exception as exc:  # noqa: BLE001
+                print(f"  [cdp] new_cdp_session failed for {page.url[:60]}: {exc}")
+                return
+            try:
+                client.send("Network.enable", {
+                    "maxTotalBufferSize": 200_000_000,
+                    "maxResourceBufferSize": 100_000_000,
+                })
+            except Exception as exc:  # noqa: BLE001
+                print(f"  [cdp] Network.enable failed: {exc}")
+                return
+            cdp_sessions.append(client)
+
+            def on_request_will_be_sent(params):
+                req = params.get("request", {})
+                url = req.get("url", "")
+                if _is_data_endpoint(url):
+                    interesting_requests[params["requestId"]] = {
+                        "url": url,
+                        "method": req.get("method", "GET"),
+                    }
+
+            def on_loading_finished(params):
+                req_id = params["requestId"]
+                info = interesting_requests.pop(req_id, None)
+                if not info:
+                    return
+                try:
+                    result = client.send(
+                        "Network.getResponseBody", {"requestId": req_id}
+                    )
+                except Exception as exc:  # noqa: BLE001
+                    print(f"  [cdp] getResponseBody failed for "
+                          f"{info['url'][-80:]}: {exc}")
+                    return
+                body = result.get("body", "")
+                if result.get("base64Encoded"):
+                    try:
+                        body_bytes = _b64.b64decode(body)
+                    except Exception:
+                        body_bytes = body.encode("utf-8", errors="replace")
+                else:
+                    body_bytes = body.encode("utf-8")
+                if not body_bytes:
+                    return
+                bodies_dir.mkdir(parents=True, exist_ok=True)
+                body_counter["n"] += 1
+                digest = hashlib.sha1(
+                    info["url"].encode("utf-8") + str(body_counter["n"]).encode()
+                ).hexdigest()[:12]
+                # Guess extension by probing first bytes.
+                head = body_bytes[:1].decode("latin-1", errors="ignore")
+                ext = ".json" if head in ("{", "[") else ".bin"
+                fname = f"{body_counter['n']:04d}_cdp_{digest}{ext}"
+                (bodies_dir / fname).write_bytes(body_bytes)
+                short = info["url"].split("?")[0][-80:]
+                print(
+                    f"  [cdp] saved {fname} ({len(body_bytes):,}B) "
+                    f"← {info['method']} {short}"
+                )
+                seen_api_urls.add(info["url"].split("?")[0])
+                captured.append({
+                    "kind": "cdp_response",
+                    "method": info["method"],
+                    "url": info["url"],
+                    "body_file": str((bodies_dir / fname).resolve()),
+                    "body_bytes": len(body_bytes),
+                })
+
+            client.on("Network.requestWillBeSent", on_request_will_be_sent)
+            client.on("Network.loadingFinished", on_loading_finished)
+
         print(f"  [capture] attaching to {len(all_contexts)} context(s):")
         for idx, ctx in enumerate(all_contexts):
-            # Still listen to events for URL discovery / request diagnostics.
             ctx.on("request", on_request)
             ctx.on("response", on_response)
-            # Route-based interception for data endpoints: the only reliable
-            # way to read Power BI QES bodies.
-            ctx.route("**/QueryExecutionService/**", handle_data_route)
-            ctx.route("**/querydata**", handle_data_route)
-            ctx.route("**/explore/reports/**", handle_data_route)
-            ctx.route("**/metadata/v*/**", handle_data_route)
             for page in ctx.pages:
                 try:
                     print(f"    ctx#{idx} page: {page.url[:100]}")
                 except Exception:
                     print(f"    ctx#{idx} page: <url unavailable>")
+                attach_cdp_to_page(page)
+            ctx.on("page", attach_cdp_to_page)
 
         if CDP_URL:
             print()
