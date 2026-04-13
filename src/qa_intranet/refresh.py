@@ -67,12 +67,19 @@ def capture_network(output_path: Path) -> dict:
 
     The user drives the browser manually. When they come back to the terminal
     and press Enter, the browser closes and a JSONL file is written.
+
+    Full response bodies for the Power BI QES endpoint (the one that returns
+    the table data) are saved to a sibling ``*_bodies/`` directory so we can
+    parse them offline without blowing up the JSONL.
     """
+    import hashlib
     import json
 
     _require_profile()
     captured: list[dict] = []
     seen_api_urls: set[str] = set()
+    bodies_dir = output_path.parent / (output_path.stem + "_bodies")
+    body_counter = {"n": 0}
 
     def _is_interesting(url: str) -> bool:
         lower = url.lower().split("?")[0]
@@ -80,40 +87,80 @@ def capture_network(output_path: Path) -> dict:
                       ".jpg", ".jpeg", ".gif", ".ico", ".map", ".html")
         if any(lower.endswith(ext) for ext in boring_ext):
             return False
-        # Keep any host — tokens often come from microsoftonline.com too.
+        # Drop telemetry noise but keep everything else.
+        if "applicationinsights.azure.com" in lower:
+            return False
         return True
+
+    def _is_data_endpoint(url: str) -> bool:
+        """Power BI endpoints that return the actual dashboard data."""
+        markers = (
+            "/querydata",
+            "/queryexecutionservice/",
+            "/explore/reports/",
+            "/metadata/v",
+        )
+        low = url.lower()
+        return any(m in low for m in markers)
 
     def on_request(request):
         if _is_interesting(request.url):
-            captured.append({
+            entry = {
                 "kind": "request",
                 "method": request.method,
                 "url": request.url,
                 "resource_type": request.resource_type,
                 "headers": {
                     k: v for k, v in request.headers.items()
-                    if k.lower() in ("content-type", "accept", "authorization")
+                    if k.lower() in (
+                        "content-type", "accept", "authorization",
+                        "x-powerbi-resourcekey", "activityid", "requestid",
+                    )
                 },
-            })
+            }
+            # Preserve the outgoing DAX/query payload so we can replay it.
+            if _is_data_endpoint(request.url) and request.method in ("POST", "PUT"):
+                try:
+                    entry["post_data"] = request.post_data
+                except Exception:
+                    pass
+            captured.append(entry)
 
     def on_response(response):
         if not _is_interesting(response.url):
             return
         ct = response.headers.get("content-type", "")
-        body_preview = None
-        if "json" in ct.lower():
-            try:
-                body_preview = response.text()[:2000]
-            except Exception:
-                pass
-            seen_api_urls.add(response.url.split("?")[0])
-        captured.append({
+        entry = {
             "kind": "response",
             "status": response.status,
             "url": response.url,
             "content_type": ct,
-            "body_preview": body_preview,
-        })
+        }
+
+        if "json" in ct.lower():
+            seen_api_urls.add(response.url.split("?")[0])
+            if _is_data_endpoint(response.url):
+                try:
+                    body_bytes = response.body()
+                except Exception:
+                    body_bytes = None
+                if body_bytes:
+                    bodies_dir.mkdir(parents=True, exist_ok=True)
+                    body_counter["n"] += 1
+                    digest = hashlib.sha1(
+                        response.url.encode("utf-8") + str(body_counter["n"]).encode()
+                    ).hexdigest()[:12]
+                    fname = f"{body_counter['n']:04d}_{digest}.json"
+                    (bodies_dir / fname).write_bytes(body_bytes)
+                    entry["body_file"] = str((bodies_dir / fname).resolve())
+                    entry["body_bytes"] = len(body_bytes)
+            else:
+                try:
+                    entry["body_preview"] = response.text()[:2000]
+                except Exception:
+                    pass
+
+        captured.append(entry)
 
     with get_context(headless=False) as (_, context):
         # Attach listeners to any page that already exists (CDP case) or to
