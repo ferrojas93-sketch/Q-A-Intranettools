@@ -96,4 +96,61 @@ async def search(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-ALL_TOOLS = [list_snapshots, get_snapshot, search]
+@tool(
+    "fetch_live_view",
+    "Capture Power BI responses for N seconds from the user's open Chrome "
+    "(CDP). Use this when the user asks about a specific filter combination "
+    "(titulación, año, campus…) that might not be in the cached snapshots. "
+    "IMPORTANT: Tell the user to change the filters in their browser while "
+    "this tool is recording. Returns the tables captured during the window.",
+    {"duration_s": int, "note_to_user": str},
+)
+async def fetch_live_view(args: dict[str, Any]) -> dict[str, Any]:
+    from qa_intranet.live import capture_live_view
+
+    duration = min(max(int(args.get("duration_s") or 30), 5), 120)
+    note = (args.get("note_to_user") or "").strip()
+
+    try:
+        summary = capture_live_view(duration_s=duration)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "content": [
+                {
+                    "type": "text",
+                    "text": (
+                        f"Live capture failed: {exc}. Make sure Chrome is "
+                        "open via `python -m qa_intranet open-chrome` and "
+                        "QA_INTRANET_CDP_URL is set."
+                    ),
+                }
+            ]
+        }
+
+    payload = {
+        "duration_s": summary["duration_s"],
+        "responses_seen": summary["responses_seen"],
+        "table_count": len(summary["tables"]),
+        "tables": [
+            {
+                "url": t["url"][-80:],
+                "columns": t["columns"],
+                "row_count": t["row_count"],
+                "rows": t["rows"][:MAX_ROWS_IN_RESPONSE],
+                "truncated": t["row_count"] > MAX_ROWS_IN_RESPONSE,
+            }
+            for t in summary["tables"]
+        ],
+        "note_to_user": note,
+    }
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+            }
+        ]
+    }
+
+
+ALL_TOOLS = [list_snapshots, get_snapshot, search, fetch_live_view]
