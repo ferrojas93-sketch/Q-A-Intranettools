@@ -53,7 +53,11 @@ Directrices:
    propón qué filtros reales existen.
 4. Cuando cites datos, indica si vienen de cache (snapshot_id) o en
    vivo (filtros aplicados). Sé conciso y cita los números exactos.
-5. Responde en el idioma del usuario (por defecto español)."""
+5. Responde en el idioma del usuario (por defecto español).
+6. **MUY IMPORTANTE**: cuando un tool devuelva ``"ok": false`` o un campo
+   ``"error"``, NO digas "problema técnico" ni resumas: pega LITERALMENTE
+   el campo ``error`` y, si existe, las primeras 5 líneas de
+   ``traceback``. Esto es crítico para depuración."""
 
 
 def build_client() -> ClaudeSDKClient:

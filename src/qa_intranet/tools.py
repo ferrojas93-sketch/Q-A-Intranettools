@@ -162,20 +162,37 @@ async def fetch_live_view(args: dict[str, Any]) -> dict[str, Any]:
     {},
 )
 async def inspect_dashboard_filters(args: dict[str, Any]) -> dict[str, Any]:
+    import traceback
     from qa_intranet.live_nav import inspect_filters
     try:
         data = inspect_filters()
     except Exception as exc:  # noqa: BLE001
+        tb = traceback.format_exc()
         return {
             "content": [
-                {"type": "text", "text": f"inspect failed: {exc}"}
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        {
+                            "tool": "inspect_dashboard_filters",
+                            "ok": False,
+                            "error": str(exc),
+                            "error_type": type(exc).__name__,
+                            "traceback": tb,
+                        },
+                        ensure_ascii=False, indent=2,
+                    ),
+                }
             ]
         }
     return {
         "content": [
             {
                 "type": "text",
-                "text": json.dumps(data, ensure_ascii=False, indent=2, default=str),
+                "text": json.dumps(
+                    {"tool": "inspect_dashboard_filters", "ok": True, **data},
+                    ensure_ascii=False, indent=2, default=str,
+                ),
             }
         ]
     }
@@ -191,15 +208,30 @@ async def inspect_dashboard_filters(args: dict[str, Any]) -> dict[str, Any]:
     {"filters": dict, "duration_s": int},
 )
 async def apply_filters_and_capture(args: dict[str, Any]) -> dict[str, Any]:
+    import traceback
     from qa_intranet.live_nav import apply_and_capture
     filters = args.get("filters") or {}
     duration = min(max(int(args.get("duration_s") or 20), 5), 90)
     try:
         result = apply_and_capture(filters, duration_s=duration)
     except Exception as exc:  # noqa: BLE001
+        tb = traceback.format_exc()
         return {
             "content": [
-                {"type": "text", "text": f"apply_filters_and_capture failed: {exc}"}
+                {
+                    "type": "text",
+                    "text": json.dumps(
+                        {
+                            "tool": "apply_filters_and_capture",
+                            "ok": False,
+                            "error": str(exc),
+                            "error_type": type(exc).__name__,
+                            "traceback": tb,
+                            "filters": filters,
+                        },
+                        ensure_ascii=False, indent=2,
+                    ),
+                }
             ]
         }
     payload = {

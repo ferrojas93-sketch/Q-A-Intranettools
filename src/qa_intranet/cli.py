@@ -215,15 +215,19 @@ def _render_message(message) -> None:
             continue
 
         for block in content:
-            btype = _block_attr(block, "type") or type(block).__name__.lower()
+            btype = (
+                _block_attr(block, "type")
+                or type(block).__name__
+            )
+            btype_low = btype.lower().replace("_", "")
             text = _block_attr(block, "text")
 
-            if text:
+            if text and "thinking" not in btype_low:
                 console.print(f"[cyan]claude>[/cyan] {text}")
                 continue
 
-            # Tool invocation
-            if "tool_use" in btype.lower():
+            # Tool invocation (ToolUseBlock or {"type": "tool_use"})
+            if "tooluse" in btype_low:
                 name = _block_attr(block, "name") or "?"
                 short_name = name.split("__")[-1] if name else "?"
                 inp = _block_attr(block, "input") or {}
@@ -240,19 +244,21 @@ def _render_message(message) -> None:
                 )
                 continue
 
-            # Tool result
-            if "tool_result" in btype.lower():
+            # Tool result (ToolResultBlock or {"type": "tool_result"})
+            if "toolresult" in btype_low:
                 result = _block_attr(block, "content") or ""
                 if isinstance(result, list):
                     pieces = []
                     for item in result:
-                        t = _block_attr(item, "text")
+                        t = _block_attr(item, "text") or (
+                            item.get("text") if isinstance(item, dict) else None
+                        )
                         if t:
                             pieces.append(t)
                     result = "\n".join(pieces)
                 snippet = str(result).strip().replace("\n", " ")
-                if len(snippet) > 100:
-                    snippet = snippet[:100] + "…"
+                if len(snippet) > 200:
+                    snippet = snippet[:200] + "…"
                 console.print(f"[dim]  ← {snippet}[/dim]")
                 continue
 
