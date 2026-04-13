@@ -203,21 +203,80 @@ def capture_network(output_path: Path) -> dict:
 
         captured.append(entry)
 
+    def handle_data_route(route):
+        request = route.request
+        try:
+            # Playwright performs the request itself from its Node side,
+            # then we hand the response back to the page. This gives us the
+            # body even when the Power BI iframe closes immediately after.
+            api_response = route.fetch()
+        except Exception as exc:  # noqa: BLE001
+            print(f"  [capture] route.fetch failed: {exc}")
+            try:
+                route.continue_()
+            except Exception:
+                pass
+            return
+
+        try:
+            body_bytes = api_response.body()
+        except Exception as exc:  # noqa: BLE001
+            body_bytes = None
+            print(f"  [capture] api_response.body failed: {exc}")
+
+        if body_bytes:
+            bodies_dir.mkdir(parents=True, exist_ok=True)
+            body_counter["n"] += 1
+            digest = hashlib.sha1(
+                request.url.encode("utf-8") + str(body_counter["n"]).encode()
+            ).hexdigest()[:12]
+            ct = api_response.headers.get("content-type", "")
+            ext = ".json" if "json" in ct.lower() else ".bin"
+            fname = f"{body_counter['n']:04d}_route_{digest}{ext}"
+            (bodies_dir / fname).write_bytes(body_bytes)
+            short = request.url.split("?")[0][-80:]
+            print(
+                f"  [capture] route saved {fname} ({len(body_bytes):,}B) "
+                f"← {request.method} {short}"
+            )
+            seen_api_urls.add(request.url.split("?")[0])
+            captured.append({
+                "kind": "route_response",
+                "method": request.method,
+                "url": request.url,
+                "status": api_response.status,
+                "content_type": ct,
+                "body_file": str((bodies_dir / fname).resolve()),
+                "body_bytes": len(body_bytes),
+            })
+
+        try:
+            route.fulfill(response=api_response)
+        except Exception as exc:  # noqa: BLE001
+            # If fulfill fails (e.g. iframe already gone) we still kept the body.
+            try:
+                route.continue_()
+            except Exception:
+                pass
+
     with get_context(headless=False) as (_, context):
-        # Collect every BrowserContext we can see. In CDP mode the user's
-        # tab may live in a sibling context — browser.contexts gives us all
-        # of them. In persistent mode context.browser is None, so we fall
-        # back to the context we received.
+        # Collect every BrowserContext we can see.
         browser = getattr(context, "browser", None)
         all_contexts = list(browser.contexts) if browser is not None else [context]
         if context not in all_contexts:
             all_contexts.append(context)
 
-        # Debug: show what we're attaching to.
         print(f"  [capture] attaching to {len(all_contexts)} context(s):")
         for idx, ctx in enumerate(all_contexts):
+            # Still listen to events for URL discovery / request diagnostics.
             ctx.on("request", on_request)
             ctx.on("response", on_response)
+            # Route-based interception for data endpoints: the only reliable
+            # way to read Power BI QES bodies.
+            ctx.route("**/QueryExecutionService/**", handle_data_route)
+            ctx.route("**/querydata**", handle_data_route)
+            ctx.route("**/explore/reports/**", handle_data_route)
+            ctx.route("**/metadata/v*/**", handle_data_route)
             for page in ctx.pages:
                 try:
                     print(f"    ctx#{idx} page: {page.url[:100]}")
