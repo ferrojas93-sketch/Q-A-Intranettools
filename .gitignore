@@ -1,0 +1,33 @@
+# Secrets / session
+.env
+.env.local
+storage_state.enc
+storage_state.json
+*.enc
+
+# Cache / downloads
+cache.db
+cache.db-journal
+cache.db-wal
+cache.db-shm
+downloads/
+.qa_intranet/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.venv/
+venv/
+
+# IDE
+.idea/
+.vscode/
+*.swp
+.DS_Store
