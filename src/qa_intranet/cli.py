@@ -45,30 +45,90 @@ def _cmd_refresh(slug: Optional[str] = None) -> int:
 
 
 def _cmd_list() -> int:
-    from qa_intranet.cache import list_tree, session_scope
+    from qa_intranet.cache import list_snapshots, session_scope
 
     with session_scope() as session:
-        rows = list_tree(session)
+        snaps = list_snapshots(session)
 
-    if not rows:
+    if not snaps:
         console.print(
-            "[yellow]No reports in cache yet. Run `refresh` first.[/yellow]"
+            "[yellow]No snapshots in cache. Run `parse-har capture.har` and "
+            "`import-data` first.[/yellow]"
         )
         return 0
 
-    table = Table(title="Cached reports")
-    table.add_column("Slug")
-    table.add_column("Title")
-    table.add_column("Leaf?")
-    table.add_column("Last fetched")
-    for r in rows:
+    table = Table(title=f"Cached snapshots ({len(snaps)})")
+    table.add_column("ID")
+    table.add_column("Rows")
+    table.add_column("Columns (first 3)")
+    table.add_column("Source file")
+    for r in snaps[:200]:
+        cols = r.get("columns") or []
+        cols_preview = ", ".join(cols[:3]) + (" …" if len(cols) > 3 else "")
         table.add_row(
-            r["slug"],
-            r["title"],
-            "✓" if r["is_leaf"] else "",
-            r["last_fetched"] or "-",
+            str(r["id"]),
+            str(r["row_count"]),
+            cols_preview,
+            r["source_file"],
         )
     console.print(table)
+    return 0
+
+
+def _cmd_import_data(argv: list[str]) -> int:
+    """Ingest parsed DSR tables from network_bodies/ into SQLite."""
+    import argparse
+    from pathlib import Path
+
+    from qa_intranet.loader import load_bodies_dir
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet import-data",
+        description=(
+            "Read every JSON body produced by parse-har, decode Power BI DSR "
+            "responses, and store each table as a Snapshot in cache.db."
+        ),
+    )
+    parser.add_argument(
+        "--bodies-dir",
+        default="network_bodies",
+        help="Directory produced by parse-har (default: network_bodies)",
+    )
+    parser.add_argument(
+        "--reset",
+        action="store_true",
+        help="Delete every existing snapshot before importing",
+    )
+    parser.add_argument(
+        "--limit", type=int, default=None, help="Only load the first N files"
+    )
+    opts = parser.parse_args(argv)
+
+    bodies = Path(opts.bodies_dir)
+    if not bodies.exists():
+        console.print(f"[red]Bodies dir not found:[/red] {bodies}")
+        return 1
+
+    try:
+        summary = load_bodies_dir(bodies, reset=opts.reset, limit=opts.limit)
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"[red]import-data failed:[/red] {exc}")
+        return 1
+
+    console.print(
+        f"[green]Imported {summary['snapshots_inserted']} snapshots[/green] "
+        f"(skipped {summary['snapshots_skipped_duplicate']} duplicates) "
+        f"from {summary['files_seen']} files."
+    )
+    if summary["files_without_tables"]:
+        console.print(
+            f"[dim]{summary['files_without_tables']} files had no parseable "
+            "tables (metadata endpoints).[/dim]"
+        )
+    if summary["files_errored"]:
+        console.print(
+            f"[yellow]{summary['files_errored']} files errored during parse.[/yellow]"
+        )
     return 0
 
 
@@ -77,7 +137,7 @@ async def _chat_loop() -> int:
 
     console.print(
         "[bold cyan]Q&A Intranet Tools[/bold cyan] — escribe una pregunta, "
-        "`/list`, `/refresh [slug]`, `/login` o `/quit`."
+        "`/list`, `/import`, `/quit`."
     )
 
     client = build_client()
@@ -98,6 +158,9 @@ async def _chat_loop() -> int:
                     return 0
                 if cmd == "/list":
                     _cmd_list()
+                    continue
+                if cmd == "/import":
+                    _cmd_import_data(parts[1:])
                     continue
                 if cmd == "/login":
                     _cmd_login()
@@ -313,6 +376,8 @@ def main() -> int:
         return _cmd_parse_har(args[1:])
     if cmd == "extract-data":
         return _cmd_extract_data(args[1:])
+    if cmd == "import-data":
+        return _cmd_import_data(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
     console.print(
@@ -322,7 +387,8 @@ def main() -> int:
         "capture-network [--output PATH]|"
         "open-chrome [--port N] [--chrome-path PATH]|"
         "parse-har <har_path> [--bodies-dir DIR] [--all]|"
-        "extract-data [--bodies-dir DIR] [--output JSON]]"
+        "extract-data [--bodies-dir DIR] [--output JSON]|"
+        "import-data [--bodies-dir DIR] [--reset] [--limit N]]"
     )
     return 1
 
