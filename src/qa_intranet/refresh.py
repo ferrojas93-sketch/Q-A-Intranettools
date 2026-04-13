@@ -179,15 +179,10 @@ def capture_network(output_path: Path) -> dict:
         captured.append(entry)
 
     with get_context(headless=False) as (_, context):
-        # Attach listeners to any page that already exists (CDP case) or to
-        # whatever we open (persistent case), and to newly opened pages.
-        def _wire(page):
-            page.on("request", on_request)
-            page.on("response", on_response)
-
-        for existing in context.pages:
-            _wire(existing)
-        context.on("page", _wire)
+        # Attach listeners at context level so they fire for every page,
+        # including tabs already open before we attached (CDP case).
+        context.on("request", on_request)
+        context.on("response", on_response)
 
         if CDP_URL:
             print()
@@ -201,7 +196,6 @@ def capture_network(output_path: Path) -> dict:
             print("=" * 70)
         else:
             page = context.pages[0] if context.pages else context.new_page()
-            _wire(page)
             page.goto(BASE_URL, wait_until="load", timeout=60_000)
             print()
             print("=" * 70)
