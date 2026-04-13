@@ -96,34 +96,47 @@ def storage_state_to_tempfile(state: dict, tmp_dir: Path) -> Path:
 
 # --- Login flow --------------------------------------------------------------
 
-def interactive_login(timeout_seconds: int = 300) -> None:
-    """Open a visible browser; wait until the user finishes SSO, then persist state."""
+def interactive_login(timeout_seconds: int = 600) -> None:
+    """Open a visible browser; wait until the user confirms login, then persist state.
+
+    Rather than trying to detect a successful login automatically (fragile with
+    various Azure AD tenants and MFA flows), we open the browser, let the user
+    complete whatever is needed, and wait for them to press Enter in the
+    terminal. We then verify the current URL is on the target host before
+    saving the session.
+    """
     from playwright.sync_api import sync_playwright
 
-    print(f"Opening {BASE_URL} — complete the SSO login in the browser window.")
+    print(f"Opening {BASE_URL} in a visible browser window…")
+    print("→ Complete the SSO login (and MFA) there.")
+    print("→ When you can see the intranet dashboard, come back here and press ENTER.")
+    print("   (Press Ctrl+C to cancel.)")
+
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=False)
         context = browser.new_context()
         page = context.new_page()
         page.goto(BASE_URL, wait_until="domcontentloaded")
 
-        # Wait until we're back on the target host and the body rendered.
-        deadline_ms = timeout_seconds * 1000
         try:
-            page.wait_for_function(
-                """(fragments) => {
-                    const u = window.location.href;
-                    const onLogin = fragments.some(f => u.includes(f));
-                    return !onLogin && u.startsWith('https://intranettools.esic.edu');
-                }""",
-                arg=list(LOGIN_HOST_FRAGMENTS),
-                timeout=deadline_ms,
-            )
-        except Exception as exc:
+            input("\nPress ENTER once you have logged in... ")
+        except (KeyboardInterrupt, EOFError):
+            browser.close()
+            raise RuntimeError("Login cancelled.") from None
+
+        current_url = page.url
+        if any(frag in current_url for frag in LOGIN_HOST_FRAGMENTS):
             browser.close()
             raise RuntimeError(
-                "Timed out waiting for successful login. Try again."
-            ) from exc
+                f"Still on the login page ({current_url}). "
+                "Finish the SSO flow in the browser and try again."
+            )
+        if not current_url.startswith("https://intranettools.esic.edu"):
+            browser.close()
+            raise RuntimeError(
+                f"Unexpected final URL: {current_url}. "
+                "Navigate to the intranettools dashboard before pressing Enter."
+            )
 
         state = context.storage_state()
         browser.close()
