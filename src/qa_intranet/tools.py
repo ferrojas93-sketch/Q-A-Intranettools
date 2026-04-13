@@ -106,23 +106,28 @@ async def search(args: dict[str, Any]) -> dict[str, Any]:
     {"duration_s": int, "note_to_user": str},
 )
 async def fetch_live_view(args: dict[str, Any]) -> dict[str, Any]:
+    import asyncio
+    import traceback
     from qa_intranet.live import capture_live_view
 
     duration = min(max(int(args.get("duration_s") or 30), 5), 120)
     note = (args.get("note_to_user") or "").strip()
 
     try:
-        summary = capture_live_view(duration_s=duration)
+        # Playwright sync API + asyncio loop don't mix; run in a thread.
+        summary = await asyncio.to_thread(capture_live_view, duration)
     except Exception as exc:  # noqa: BLE001
         return {
             "content": [
                 {
                     "type": "text",
-                    "text": (
-                        f"Live capture failed: {exc}. Make sure Chrome is "
-                        "open via `python -m qa_intranet open-chrome` and "
-                        "QA_INTRANET_CDP_URL is set."
-                    ),
+                    "text": json.dumps({
+                        "tool": "fetch_live_view",
+                        "ok": False,
+                        "error": str(exc),
+                        "error_type": type(exc).__name__,
+                        "traceback": traceback.format_exc(),
+                    }, ensure_ascii=False, indent=2),
                 }
             ]
         }
@@ -162,10 +167,11 @@ async def fetch_live_view(args: dict[str, Any]) -> dict[str, Any]:
     {},
 )
 async def inspect_dashboard_filters(args: dict[str, Any]) -> dict[str, Any]:
+    import asyncio
     import traceback
     from qa_intranet.live_nav import inspect_filters
     try:
-        data = inspect_filters()
+        data = await asyncio.to_thread(inspect_filters)
     except Exception as exc:  # noqa: BLE001
         tb = traceback.format_exc()
         return {
@@ -208,12 +214,13 @@ async def inspect_dashboard_filters(args: dict[str, Any]) -> dict[str, Any]:
     {"filters": dict, "duration_s": int},
 )
 async def apply_filters_and_capture(args: dict[str, Any]) -> dict[str, Any]:
+    import asyncio
     import traceback
     from qa_intranet.live_nav import apply_and_capture
     filters = args.get("filters") or {}
     duration = min(max(int(args.get("duration_s") or 20), 5), 90)
     try:
-        result = apply_and_capture(filters, duration_s=duration)
+        result = await asyncio.to_thread(apply_and_capture, filters, duration)
     except Exception as exc:  # noqa: BLE001
         tb = traceback.format_exc()
         return {
