@@ -137,28 +137,44 @@ def capture_network(output_path: Path) -> dict:
             "content_type": ct,
         }
 
-        if "json" in ct.lower():
+        is_data = _is_data_endpoint(response.url)
+        if is_data or "json" in ct.lower():
             seen_api_urls.add(response.url.split("?")[0])
-            if _is_data_endpoint(response.url):
-                try:
-                    body_bytes = response.body()
-                except Exception:
-                    body_bytes = None
-                if body_bytes:
-                    bodies_dir.mkdir(parents=True, exist_ok=True)
-                    body_counter["n"] += 1
-                    digest = hashlib.sha1(
-                        response.url.encode("utf-8") + str(body_counter["n"]).encode()
-                    ).hexdigest()[:12]
-                    fname = f"{body_counter['n']:04d}_{digest}.json"
-                    (bodies_dir / fname).write_bytes(body_bytes)
-                    entry["body_file"] = str((bodies_dir / fname).resolve())
-                    entry["body_bytes"] = len(body_bytes)
+
+        if is_data:
+            # Save the full body regardless of content-type; Power BI has mixed
+            # responses (application/json, application/x-javascript, binary).
+            body_bytes = None
+            body_err = None
+            try:
+                body_bytes = response.body()
+            except Exception as exc:  # noqa: BLE001
+                body_err = f"{type(exc).__name__}: {exc}"
+            if body_bytes:
+                bodies_dir.mkdir(parents=True, exist_ok=True)
+                body_counter["n"] += 1
+                digest = hashlib.sha1(
+                    response.url.encode("utf-8") + str(body_counter["n"]).encode()
+                ).hexdigest()[:12]
+                # Extension based on content-type heuristic.
+                ext = ".json"
+                if "json" not in ct.lower() and "javascript" not in ct.lower():
+                    ext = ".bin"
+                fname = f"{body_counter['n']:04d}_{digest}{ext}"
+                (bodies_dir / fname).write_bytes(body_bytes)
+                entry["body_file"] = str((bodies_dir / fname).resolve())
+                entry["body_bytes"] = len(body_bytes)
+                print(f"  [capture] saved body {fname} ({len(body_bytes):,}B) "
+                      f"← {response.url.split('?')[0][-80:]}")
             else:
-                try:
-                    entry["body_preview"] = response.text()[:2000]
-                except Exception:
-                    pass
+                entry["body_error"] = body_err or "empty"
+                print(f"  [capture] could not read body for "
+                      f"{response.url.split('?')[0][-80:]}: {entry['body_error']}")
+        elif "json" in ct.lower():
+            try:
+                entry["body_preview"] = response.text()[:2000]
+            except Exception:
+                pass
 
         captured.append(entry)
 
