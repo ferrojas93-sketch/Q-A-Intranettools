@@ -42,7 +42,9 @@ def _launch_context(p, state: dict, tmp_dir: Path, headless: bool = True):
     return browser, context
 
 
-def fetch_page_html(url: Optional[str] = None) -> tuple[str, str]:
+def fetch_page_html(
+    url: Optional[str] = None, timeout_ms: int = 60_000
+) -> tuple[str, str]:
     """Load a page with the saved session and return (html, final_url).
 
     Raises NotAuthenticatedError if the session redirects to the Microsoft
@@ -56,7 +58,9 @@ def fetch_page_html(url: Optional[str] = None) -> tuple[str, str]:
         with sync_playwright() as p:
             browser, context = _launch_context(p, state, Path(td))
             page = context.new_page()
-            page.goto(target, wait_until="networkidle")
+            page.goto(target, wait_until="load", timeout=timeout_ms)
+            # Give any lazy JS a moment to populate the menu/content.
+            page.wait_for_timeout(2000)
             html = page.content()
             current_url = page.url
             browser.close()
@@ -88,7 +92,8 @@ def refresh_all(only_slug: Optional[str] = None) -> dict:
             browser, context = _launch_context(p, state, Path(td))
             page = context.new_page()
 
-            page.goto(BASE_URL, wait_until="networkidle")
+            page.goto(BASE_URL, wait_until="load", timeout=60_000)
+            page.wait_for_timeout(2000)
             if "login.microsoftonline.com" in page.url:
                 browser.close()
                 raise NotAuthenticatedError(
@@ -126,7 +131,8 @@ def refresh_all(only_slug: Optional[str] = None) -> dict:
 
             for node in targets:
                 try:
-                    page.goto(node.url, wait_until="networkidle")
+                    page.goto(node.url, wait_until="load", timeout=60_000)
+                    page.wait_for_timeout(2000)
                     path = download_report(page, node.slug)
                     if path is None:
                         summary["failed"] += 1
