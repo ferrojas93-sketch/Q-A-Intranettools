@@ -1,15 +1,16 @@
 """Orchestrator: load the authenticated session, crawl the menu, download each
-leaf report and persist everything to the SQLite cache."""
+leaf report and persist everything to the SQLite cache.
+
+All Playwright launches use the persistent Chromium profile defined in
+``qa_intranet.auth`` so that authenticated API calls work the same way
+they do in the user's visible browser.
+"""
 from __future__ import annotations
 
-import tempfile
 from pathlib import Path
 from typing import Optional
 
-from qa_intranet.auth import (
-    load_storage_state,
-    storage_state_to_tempfile,
-)
+from qa_intranet.auth import has_profile, persistent_context
 from qa_intranet.cache import (
     get_engine,
     get_report_by_slug,
@@ -26,44 +27,27 @@ class NotAuthenticatedError(RuntimeError):
     pass
 
 
-def _require_state() -> dict:
-    state = load_storage_state()
-    if state is None:
+def _require_profile() -> None:
+    if not has_profile():
         raise NotAuthenticatedError(
             "No saved session. Run `python -m qa_intranet login` first."
         )
-    return state
-
-
-def _launch_context(p, state: dict, tmp_dir: Path, headless: bool = True):
-    storage_path = storage_state_to_tempfile(state, tmp_dir)
-    browser = p.chromium.launch(headless=headless)
-    context = browser.new_context(storage_state=str(storage_path))
-    return browser, context
 
 
 def fetch_page_html(
     url: Optional[str] = None, timeout_ms: int = 60_000
 ) -> tuple[str, str]:
-    """Load a page with the saved session and return (html, final_url).
-
-    Raises NotAuthenticatedError if the session redirects to the Microsoft
-    login page, which indicates cookies expired.
-    """
-    from playwright.sync_api import sync_playwright
-
+    """Load a page with the persistent profile and return (html, final_url)."""
+    _require_profile()
     target = url or BASE_URL
-    state = _require_state()
-    with tempfile.TemporaryDirectory() as td:
-        with sync_playwright() as p:
-            browser, context = _launch_context(p, state, Path(td))
-            page = context.new_page()
-            page.goto(target, wait_until="load", timeout=timeout_ms)
-            # Give any lazy JS a moment to populate the menu/content.
-            page.wait_for_timeout(2000)
-            html = page.content()
-            current_url = page.url
-            browser.close()
+
+    with persistent_context(headless=True) as (_, context):
+        page = context.pages[0] if context.pages else context.new_page()
+        page.goto(target, wait_until="load", timeout=timeout_ms)
+        # Give Angular time to bootstrap and fire its initial API calls.
+        page.wait_for_timeout(3000)
+        html = page.content()
+        current_url = page.url
 
     if "login.microsoftonline.com" in current_url:
         raise NotAuthenticatedError(
@@ -73,90 +57,80 @@ def fetch_page_html(
 
 
 def discover_menu() -> list[MenuNode]:
-    """Log in with the saved session and return the parsed menu tree."""
     html, _ = fetch_page_html(BASE_URL)
     return parse_menu_html(html, page_url=BASE_URL)
 
 
 def capture_network(output_path: Path) -> dict:
-    """Open a visible browser with the saved session and record every request
-    the user's navigation triggers on the intranettools host.
+    """Open a visible browser with the persistent profile and record traffic.
 
-    The user drives the browser manually (clicks, filters, reports). When they
-    come back to the terminal and press Enter, the browser closes and a JSONL
-    file is written with one event per line. Returns a summary dict.
+    The user drives the browser manually. When they come back to the terminal
+    and press Enter, the browser closes and a JSONL file is written.
     """
     import json
 
-    from playwright.sync_api import sync_playwright
-
-    state = _require_state()
+    _require_profile()
     captured: list[dict] = []
     seen_api_urls: set[str] = set()
 
     def _is_interesting(url: str) -> bool:
-        if "intranettools.esic.edu" not in url:
+        lower = url.lower().split("?")[0]
+        boring_ext = (".js", ".css", ".woff", ".woff2", ".ttf", ".svg", ".png",
+                      ".jpg", ".jpeg", ".gif", ".ico", ".map", ".html")
+        if any(lower.endswith(ext) for ext in boring_ext):
             return False
-        # Skip static assets (noise in the log).
-        lower = url.lower()
-        boring = (".js", ".css", ".woff", ".woff2", ".ttf", ".svg", ".png",
-                  ".jpg", ".jpeg", ".gif", ".ico", ".map")
-        return not any(lower.split("?")[0].endswith(ext) for ext in boring)
+        # Keep any host — tokens often come from microsoftonline.com too.
+        return True
 
-    with tempfile.TemporaryDirectory() as td:
-        with sync_playwright() as p:
-            browser, context = _launch_context(p, state, Path(td), headless=False)
-            page = context.new_page()
+    with persistent_context(headless=False) as (_, context):
+        page = context.pages[0] if context.pages else context.new_page()
 
-            def on_request(request):
-                if _is_interesting(request.url):
-                    captured.append({
-                        "kind": "request",
-                        "method": request.method,
-                        "url": request.url,
-                        "resource_type": request.resource_type,
-                        "headers": {
-                            k: v for k, v in request.headers.items()
-                            if k.lower() in ("content-type", "accept", "authorization")
-                        },
-                    })
-
-            def on_response(response):
-                if not _is_interesting(response.url):
-                    return
-                ct = response.headers.get("content-type", "")
-                body_preview = None
-                if "json" in ct.lower():
-                    try:
-                        text = response.text()
-                        body_preview = text[:2000]
-                    except Exception:
-                        pass
-                    seen_api_urls.add(response.url.split("?")[0])
+        def on_request(request):
+            if _is_interesting(request.url):
                 captured.append({
-                    "kind": "response",
-                    "status": response.status,
-                    "url": response.url,
-                    "content_type": ct,
-                    "body_preview": body_preview,
+                    "kind": "request",
+                    "method": request.method,
+                    "url": request.url,
+                    "resource_type": request.resource_type,
+                    "headers": {
+                        k: v for k, v in request.headers.items()
+                        if k.lower() in ("content-type", "accept", "authorization")
+                    },
                 })
 
-            page.on("request", on_request)
-            page.on("response", on_response)
+        def on_response(response):
+            if not _is_interesting(response.url):
+                return
+            ct = response.headers.get("content-type", "")
+            body_preview = None
+            if "json" in ct.lower():
+                try:
+                    body_preview = response.text()[:2000]
+                except Exception:
+                    pass
+                seen_api_urls.add(response.url.split("?")[0])
+            captured.append({
+                "kind": "response",
+                "status": response.status,
+                "url": response.url,
+                "content_type": ct,
+                "body_preview": body_preview,
+            })
 
-            page.goto(BASE_URL, wait_until="load", timeout=60_000)
+        page.on("request", on_request)
+        page.on("response", on_response)
 
-            print()
-            print("=" * 70)
-            print(" Browser abierto. NAVEGA POR LOS INFORMES que te interesan:")
-            print("   - Cambia de titulación en el dropdown.")
-            print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
-            print("   - Cambia año y campus si puedes.")
-            print(" Cuando termines, vuelve aquí y pulsa ENTER.")
-            print("=" * 70)
-            input()
+        page.goto(BASE_URL, wait_until="load", timeout=60_000)
 
-            browser.close()
+        print()
+        print("=" * 70)
+        print(" Browser abierto. NAVEGA POR LOS INFORMES que te interesan:")
+        print("   - Cambia de titulación en el dropdown.")
+        print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
+        print("   - Cambia año y campus si puedes.")
+        print(" Cuando termines, vuelve aquí y pulsa ENTER.")
+        print("=" * 70)
+        input()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
@@ -172,84 +146,74 @@ def capture_network(output_path: Path) -> dict:
 
 def refresh_all(only_slug: Optional[str] = None) -> dict:
     """Refresh the cache (or a single report by slug). Returns a summary dict."""
-    from playwright.sync_api import sync_playwright
-
+    _require_profile()
     get_engine()
-    state = _require_state()
 
     summary = {"discovered": 0, "fetched": 0, "failed": 0, "errors": []}
 
-    with tempfile.TemporaryDirectory() as td:
-        with sync_playwright() as p:
-            browser, context = _launch_context(p, state, Path(td))
-            page = context.new_page()
+    with persistent_context(headless=True) as (_, context):
+        page = context.pages[0] if context.pages else context.new_page()
 
-            page.goto(BASE_URL, wait_until="load", timeout=60_000)
-            page.wait_for_timeout(2000)
-            if "login.microsoftonline.com" in page.url:
-                browser.close()
-                raise NotAuthenticatedError(
-                    "Session expired. Run `python -m qa_intranet login` again."
+        page.goto(BASE_URL, wait_until="load", timeout=60_000)
+        page.wait_for_timeout(3000)
+        if "login.microsoftonline.com" in page.url:
+            raise NotAuthenticatedError(
+                "Session expired. Run `python -m qa_intranet login` again."
+            )
+
+        roots = parse_menu_html(page.content(), page_url=BASE_URL)
+        all_nodes = flatten(roots)
+        summary["discovered"] = len(all_nodes)
+
+        slug_to_id: dict[str, int] = {}
+        with session_scope() as session:
+            for node in sorted(all_nodes, key=lambda n: n.parent is not None):
+                parent_id = (
+                    slug_to_id.get(node.parent.slug) if node.parent else None
                 )
+                row = upsert_report(
+                    session,
+                    slug=node.slug,
+                    title=node.title,
+                    url=node.url,
+                    parent_id=parent_id,
+                    is_leaf=node.is_leaf,
+                )
+                slug_to_id[node.slug] = row.id
 
-            roots = parse_menu_html(page.content(), page_url=BASE_URL)
-            all_nodes = flatten(roots)
-            summary["discovered"] = len(all_nodes)
+        targets = [n for n in all_nodes if n.is_leaf]
+        if only_slug:
+            targets = [n for n in targets if n.slug == only_slug]
+            if not targets:
+                raise ValueError(f"No leaf report with slug '{only_slug}'")
 
-            # Persist the menu tree first so parent_ids resolve correctly.
-            slug_to_id: dict[str, int] = {}
-            with session_scope() as session:
-                # Two passes: roots first, then children.
-                for node in sorted(all_nodes, key=lambda n: n.parent is not None):
-                    parent_id = (
-                        slug_to_id.get(node.parent.slug) if node.parent else None
-                    )
-                    row = upsert_report(
-                        session,
-                        slug=node.slug,
-                        title=node.title,
-                        url=node.url,
-                        parent_id=parent_id,
-                        is_leaf=node.is_leaf,
-                    )
-                    slug_to_id[node.slug] = row.id
-
-            targets = [n for n in all_nodes if n.is_leaf]
-            if only_slug:
-                targets = [n for n in targets if n.slug == only_slug]
-                if not targets:
-                    browser.close()
-                    raise ValueError(f"No leaf report with slug '{only_slug}'")
-
-            for node in targets:
-                try:
-                    page.goto(node.url, wait_until="load", timeout=60_000)
-                    page.wait_for_timeout(2000)
-                    path = download_report(page, node.slug)
-                    if path is None:
-                        summary["failed"] += 1
-                        summary["errors"].append(
-                            f"{node.slug}: no export control found"
-                        )
-                        continue
-                    extracted = parse_export(path)
-                    with session_scope() as session:
-                        report = get_report_by_slug(session, node.slug)
-                        if report is None:
-                            continue
-                        store_report_data(
-                            session,
-                            report,
-                            rows=extracted.rows,
-                            columns=extracted.columns,
-                            content_text=extracted.content_text,
-                            content_hash=extracted.content_hash,
-                        )
-                    summary["fetched"] += 1
-                except Exception as exc:  # noqa: BLE001
+        for node in targets:
+            try:
+                page.goto(node.url, wait_until="load", timeout=60_000)
+                page.wait_for_timeout(2000)
+                path = download_report(page, node.slug)
+                if path is None:
                     summary["failed"] += 1
-                    summary["errors"].append(f"{node.slug}: {exc}")
-
-            browser.close()
+                    summary["errors"].append(
+                        f"{node.slug}: no export control found"
+                    )
+                    continue
+                extracted = parse_export(path)
+                with session_scope() as session:
+                    report = get_report_by_slug(session, node.slug)
+                    if report is None:
+                        continue
+                    store_report_data(
+                        session,
+                        report,
+                        rows=extracted.rows,
+                        columns=extracted.columns,
+                        content_text=extracted.content_text,
+                        content_hash=extracted.content_hash,
+                    )
+                summary["fetched"] += 1
+            except Exception as exc:  # noqa: BLE001
+                summary["failed"] += 1
+                summary["errors"].append(f"{node.slug}: {exc}")
 
     return summary
