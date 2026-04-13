@@ -14,6 +14,11 @@ BASE_URL = os.environ.get(
 )
 MODEL = os.environ.get("QA_INTRANET_MODEL", "claude-sonnet-4-6")
 
+# Optional Playwright channel: "msedge", "chrome", or empty for the bundled
+# Chromium. Some corporate Conditional Access policies only allow managed
+# browsers (Edge/Chrome installed by IT); in that case set this to "msedge".
+BROWSER_CHANNEL = os.environ.get("QA_INTRANET_BROWSER", "").strip() or None
+
 # Project-local artifacts (kept out of git)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DB_PATH = PROJECT_ROOT / "cache.db"

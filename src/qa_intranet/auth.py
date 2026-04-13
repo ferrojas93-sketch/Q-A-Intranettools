@@ -18,7 +18,7 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from qa_intranet.config import BASE_URL, USER_DIR, ensure_dirs
+from qa_intranet.config import BASE_URL, BROWSER_CHANNEL, USER_DIR, ensure_dirs
 
 PROFILE_DIR = USER_DIR / "profile"
 
@@ -33,15 +33,22 @@ def _ensure_profile() -> Path:
 
 @contextmanager
 def persistent_context(headless: bool = True, **kwargs) -> Iterator[tuple]:
-    """Yield (playwright, context) using the persistent profile directory."""
+    """Yield (playwright, context) using the persistent profile directory.
+
+    Respects QA_INTRANET_BROWSER: set to "msedge" or "chrome" to use the
+    corresponding browser installed on the system (required when Azure AD
+    Conditional Access blocks the bundled Chromium).
+    """
     from playwright.sync_api import sync_playwright
 
     _ensure_profile()
     with sync_playwright() as p:
+        launch_kwargs = {"headless": headless, **kwargs}
+        if BROWSER_CHANNEL:
+            launch_kwargs["channel"] = BROWSER_CHANNEL
         context = p.chromium.launch_persistent_context(
             str(PROFILE_DIR),
-            headless=headless,
-            **kwargs,
+            **launch_kwargs,
         )
         try:
             yield p, context
