@@ -309,6 +309,8 @@ def main() -> int:
         return _cmd_capture_network(args[1:])
     if cmd == "open-chrome":
         return _cmd_open_chrome(args[1:])
+    if cmd == "parse-har":
+        return _cmd_parse_har(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
     console.print(
@@ -316,9 +318,68 @@ def main() -> int:
         "[login|refresh [slug]|list|chat|"
         "dump-html [--url URL] [--output PATH]|"
         "capture-network [--output PATH]|"
-        "open-chrome [--port N] [--chrome-path PATH]]"
+        "open-chrome [--port N] [--chrome-path PATH]|"
+        "parse-har <har_path> [--bodies-dir DIR] [--all]]"
     )
     return 1
+
+
+def _cmd_parse_har(argv: list[str]) -> int:
+    """Extract Power BI response bodies from a HAR file exported by Chrome DevTools."""
+    import argparse
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet parse-har",
+        description=(
+            "Read a HAR file exported from Chrome DevTools (Network tab, "
+            "Save all as HAR with content) and extract Power BI data bodies."
+        ),
+    )
+    parser.add_argument("har_path", help="Path to the .har file")
+    parser.add_argument(
+        "--bodies-dir",
+        default="network_bodies",
+        help="Directory to write extracted body files (default: network_bodies)",
+    )
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help="Extract every response, not just Power BI data endpoints",
+    )
+    opts = parser.parse_args(argv)
+
+    har = Path(opts.har_path)
+    if not har.exists():
+        console.print(f"[red]HAR file not found:[/red] {har}")
+        return 1
+
+    from qa_intranet.har_parser import extract_to_bodies_dir
+
+    try:
+        summary = extract_to_bodies_dir(
+            har, Path(opts.bodies_dir), only_data=not opts.all
+        )
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"[red]parse-har failed:[/red] {exc}")
+        return 1
+
+    console.print(
+        f"[green]Parsed {summary['total_entries']} entries[/green], "
+        f"[bold]{summary['saved']}[/bold] bodies saved to "
+        f"[bold]{summary['bodies_dir']}[/bold]."
+    )
+    if summary["skipped_without_body"]:
+        console.print(
+            f"[yellow]{summary['skipped_without_body']} matching entries had "
+            "no response body (record again with 'Preserve log' and content).[/yellow]"
+        )
+    console.print(
+        f"[cyan]Unique data URLs ({len(summary['unique_data_urls'])}):[/cyan]"
+    )
+    for u in summary["unique_data_urls"]:
+        console.print(f"  {u}")
+    return 0
 
 
 if __name__ == "__main__":
