@@ -103,15 +103,22 @@ def capture_network(output_path: Path) -> dict:
         low = url.lower()
         return any(m in low for m in markers)
 
+    # Collected data-endpoint requests to replay after the user finishes
+    # navigating. Keyed by (method, url, post_data_hash) to dedupe.
+    replay_queue: list[dict] = []
+    replay_seen: set[str] = set()
+
     def on_request(request):
         if _is_interesting(request.url):
+            # Save a full copy of every header (diagnostic purposes).
+            all_headers = dict(request.headers)
             entry = {
                 "kind": "request",
                 "method": request.method,
                 "url": request.url,
                 "resource_type": request.resource_type,
                 "headers": {
-                    k: v for k, v in request.headers.items()
+                    k: v for k, v in all_headers.items()
                     if k.lower() in (
                         "content-type", "accept", "authorization",
                         "x-powerbi-resourcekey", "activityid", "requestid",
@@ -123,7 +130,18 @@ def capture_network(output_path: Path) -> dict:
                 try:
                     entry["post_data"] = request.post_data
                 except Exception:
-                    pass
+                    entry["post_data"] = None
+
+                # Queue for later replay with the full header set.
+                key = f"{request.method}|{request.url}|{hash(entry.get('post_data') or '')}"
+                if key not in replay_seen:
+                    replay_seen.add(key)
+                    replay_queue.append({
+                        "method": request.method,
+                        "url": request.url,
+                        "headers": all_headers,
+                        "post_data": entry.get("post_data"),
+                    })
             captured.append(entry)
 
     def on_response(response):
@@ -228,6 +246,58 @@ def capture_network(output_path: Path) -> dict:
             print(" Cuando termines, vuelve aquí y pulsa ENTER.")
             print("=" * 70)
         input()
+
+        # Replay the captured data requests using Playwright's server-side
+        # HTTP client (context.request). Unlike on_response, this doesn't
+        # depend on the Power BI iframe still being alive, and it shares
+        # cookies with the user's active session.
+        replay_summary = {"ok": 0, "fail": 0}
+        if replay_queue:
+            print(f"\n  [capture] replaying {len(replay_queue)} data requests…")
+            for i, req in enumerate(replay_queue, 1):
+                try:
+                    kwargs = {"headers": req["headers"]}
+                    if req.get("post_data"):
+                        kwargs["data"] = req["post_data"]
+                    # Try the same context first; fall back to any sibling
+                    # context if that fails (cookie partitioning).
+                    resp = None
+                    last_err = None
+                    for ctx in all_contexts:
+                        try:
+                            if req["method"] == "POST":
+                                resp = ctx.request.post(req["url"], **kwargs)
+                            else:
+                                resp = ctx.request.fetch(
+                                    req["url"], method=req["method"], **kwargs
+                                )
+                            if resp.ok or resp.status in (200, 206):
+                                break
+                        except Exception as exc:  # noqa: BLE001
+                            last_err = exc
+                            continue
+                    if resp is None:
+                        raise last_err or RuntimeError("no context could fulfil")
+                    body_bytes = resp.body()
+                    bodies_dir.mkdir(parents=True, exist_ok=True)
+                    digest = hashlib.sha1(
+                        req["url"].encode("utf-8") + str(i).encode()
+                    ).hexdigest()[:12]
+                    ext = ".json"
+                    fname = f"{i:04d}_replay_{digest}{ext}"
+                    (bodies_dir / fname).write_bytes(body_bytes)
+                    print(
+                        f"    [replay] {i:02d} OK {resp.status} "
+                        f"{len(body_bytes):>7,}B → {fname}"
+                    )
+                    replay_summary["ok"] += 1
+                except Exception as exc:  # noqa: BLE001
+                    print(f"    [replay] {i:02d} FAIL: {exc}")
+                    replay_summary["fail"] += 1
+            print(
+                f"  [capture] replay done: {replay_summary['ok']} ok / "
+                f"{replay_summary['fail']} fail"
+            )
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
     with output_path.open("w", encoding="utf-8") as f:
