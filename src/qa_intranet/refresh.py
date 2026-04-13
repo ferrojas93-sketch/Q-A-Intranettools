@@ -147,6 +147,13 @@ def capture_network(output_path: Path) -> dict:
             body_bytes = None
             body_err = None
             try:
+                # Block until the body is fully downloaded into Playwright's
+                # cache. Without this the Power BI iframe often closes
+                # itself before body() can read the bytes.
+                try:
+                    response.finished()
+                except Exception:
+                    pass
                 body_bytes = response.body()
             except Exception as exc:  # noqa: BLE001
                 body_err = f"{type(exc).__name__}: {exc}"
