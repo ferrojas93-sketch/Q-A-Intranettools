@@ -153,4 +153,80 @@ async def fetch_live_view(args: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-ALL_TOOLS = [list_snapshots, get_snapshot, search, fetch_live_view]
+@tool(
+    "inspect_dashboard_filters",
+    "Inspect the Power BI dashboard open in the user's Chrome and return "
+    "the slicers visible (title dropdowns, year, campus, tabs, etc.) with "
+    "their options. Call this FIRST before apply_filters_and_capture so you "
+    "know which filter labels and values exist on the page.",
+    {},
+)
+async def inspect_dashboard_filters(args: dict[str, Any]) -> dict[str, Any]:
+    from qa_intranet.live_nav import inspect_filters
+    try:
+        data = inspect_filters()
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "content": [
+                {"type": "text", "text": f"inspect failed: {exc}"}
+            ]
+        }
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(data, ensure_ascii=False, indent=2, default=str),
+            }
+        ]
+    }
+
+
+@tool(
+    "apply_filters_and_capture",
+    "Autonomously click the given filters in the user's Chrome (keys are "
+    "slicer labels, values are option texts — both match case-insensitively "
+    "by substring), wait ``duration_s`` seconds for Power BI to refresh, and "
+    "return every DSR table captured during that window. Example "
+    "filters: {\"TITULACIÓN\": \"BS/UNI (MÁSTER/PS)\", \"Año\": \"2024\"}.",
+    {"filters": dict, "duration_s": int},
+)
+async def apply_filters_and_capture(args: dict[str, Any]) -> dict[str, Any]:
+    from qa_intranet.live_nav import apply_and_capture
+    filters = args.get("filters") or {}
+    duration = min(max(int(args.get("duration_s") or 20), 5), 90)
+    try:
+        result = apply_and_capture(filters, duration_s=duration)
+    except Exception as exc:  # noqa: BLE001
+        return {
+            "content": [
+                {"type": "text", "text": f"apply_filters_and_capture failed: {exc}"}
+            ]
+        }
+    payload = {
+        "applied_filters": result["applied_filters"],
+        "errors": result["errors"],
+        "responses_seen": result["responses_seen"],
+        "table_count": len(result["tables"]),
+        "tables": [
+            {
+                "url": t["url"][-80:],
+                "columns": t["columns"],
+                "row_count": t["row_count"],
+                "rows": t["rows"][:MAX_ROWS_IN_RESPONSE],
+                "truncated": t["row_count"] > MAX_ROWS_IN_RESPONSE,
+            }
+            for t in result["tables"]
+        ],
+    }
+    return {
+        "content": [
+            {
+                "type": "text",
+                "text": json.dumps(payload, ensure_ascii=False, indent=2, default=str),
+            }
+        ]
+    }
+
+
+ALL_TOOLS = [list_snapshots, get_snapshot, search, fetch_live_view,
+             inspect_dashboard_filters, apply_filters_and_capture]
