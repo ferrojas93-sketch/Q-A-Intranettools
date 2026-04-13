@@ -179,10 +179,25 @@ def capture_network(output_path: Path) -> dict:
         captured.append(entry)
 
     with get_context(headless=False) as (_, context):
-        # Attach listeners at context level so they fire for every page,
-        # including tabs already open before we attached (CDP case).
-        context.on("request", on_request)
-        context.on("response", on_response)
+        # Collect every BrowserContext we can see. In CDP mode the user's
+        # tab may live in a sibling context — browser.contexts gives us all
+        # of them. In persistent mode context.browser is None, so we fall
+        # back to the context we received.
+        browser = getattr(context, "browser", None)
+        all_contexts = list(browser.contexts) if browser is not None else [context]
+        if context not in all_contexts:
+            all_contexts.append(context)
+
+        # Debug: show what we're attaching to.
+        print(f"  [capture] attaching to {len(all_contexts)} context(s):")
+        for idx, ctx in enumerate(all_contexts):
+            ctx.on("request", on_request)
+            ctx.on("response", on_response)
+            for page in ctx.pages:
+                try:
+                    print(f"    ctx#{idx} page: {page.url[:100]}")
+                except Exception:
+                    print(f"    ctx#{idx} page: <url unavailable>")
 
         if CDP_URL:
             print()
