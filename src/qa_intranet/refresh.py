@@ -42,16 +42,21 @@ def _launch_context(p, state: dict, tmp_dir: Path, headless: bool = True):
     return browser, context
 
 
-def discover_menu() -> list[MenuNode]:
-    """Log in with the saved session and return the parsed menu tree."""
+def fetch_page_html(url: Optional[str] = None) -> tuple[str, str]:
+    """Load a page with the saved session and return (html, final_url).
+
+    Raises NotAuthenticatedError if the session redirects to the Microsoft
+    login page, which indicates cookies expired.
+    """
     from playwright.sync_api import sync_playwright
 
+    target = url or BASE_URL
     state = _require_state()
     with tempfile.TemporaryDirectory() as td:
         with sync_playwright() as p:
             browser, context = _launch_context(p, state, Path(td))
             page = context.new_page()
-            page.goto(BASE_URL, wait_until="networkidle")
+            page.goto(target, wait_until="networkidle")
             html = page.content()
             current_url = page.url
             browser.close()
@@ -60,6 +65,12 @@ def discover_menu() -> list[MenuNode]:
         raise NotAuthenticatedError(
             "Session expired. Run `python -m qa_intranet login` again."
         )
+    return html, current_url
+
+
+def discover_menu() -> list[MenuNode]:
+    """Log in with the saved session and return the parsed menu tree."""
+    html, _ = fetch_page_html(BASE_URL)
     return parse_menu_html(html, page_url=BASE_URL)
 
 

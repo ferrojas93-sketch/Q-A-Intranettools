@@ -33,10 +33,15 @@ cp .env.example .env
 # 1) Primer login interactivo — abre un Chromium para que completes SSO+MFA.
 python -m qa_intranet login
 
-# 2) Descubre e indexa los informes en el cache local.
+# 2) (Opcional) Vuelca el HTML de una página autenticada para inspeccionar su DOM
+#    (útil para afinar selectores del crawler sobre el portal real):
+python -m qa_intranet dump-html                    # BASE_URL → menu_dump.html
+python -m qa_intranet dump-html --url https://... --output otra.html
+
+# 3) Descubre e indexa los informes en el cache local.
 python -m qa_intranet refresh
 
-# 3) Lanza el chat Q&A.
+# 4) Lanza el chat Q&A.
 python -m qa_intranet
 ```
 

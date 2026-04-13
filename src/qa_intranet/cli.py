@@ -135,6 +135,44 @@ def _render_message(message) -> None:
             console.print(f"[cyan]claude>[/cyan] {content}")
 
 
+def _cmd_dump_html(argv: list[str]) -> int:
+    import argparse
+
+    from qa_intranet.config import BASE_URL
+    from qa_intranet.refresh import NotAuthenticatedError, fetch_page_html
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet dump-html",
+        description="Fetch a page with the saved session and save its HTML.",
+    )
+    parser.add_argument("--url", default=BASE_URL, help="URL to fetch (default: BASE_URL)")
+    parser.add_argument(
+        "--output",
+        default="menu_dump.html",
+        help="Output file path (default: menu_dump.html)",
+    )
+    opts = parser.parse_args(argv)
+
+    try:
+        html, final_url = fetch_page_html(opts.url)
+    except NotAuthenticatedError as exc:
+        console.print(f"[yellow]{exc}[/yellow]")
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"[red]Dump failed:[/red] {exc}")
+        return 1
+
+    from pathlib import Path
+
+    out = Path(opts.output)
+    out.write_text(html, encoding="utf-8")
+    console.print(
+        f"[green]Saved[/green] {len(html):,} chars to [bold]{out.resolve()}[/bold]"
+    )
+    console.print(f"Final URL: {final_url}")
+    return 0
+
+
 def main() -> int:
     args = sys.argv[1:]
     if not args:
@@ -150,9 +188,14 @@ def main() -> int:
         return _cmd_list()
     if cmd in ("chat", "repl"):
         return asyncio.run(_chat_loop())
+    if cmd == "dump-html":
+        return _cmd_dump_html(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
-    console.print("Usage: python -m qa_intranet [login|refresh [slug]|list|chat]")
+    console.print(
+        "Usage: python -m qa_intranet "
+        "[login|refresh [slug]|list|chat|dump-html [--url URL] [--output PATH]]"
+    )
     return 1
 
 
