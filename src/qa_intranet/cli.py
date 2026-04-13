@@ -173,29 +173,88 @@ async def _chat_loop() -> int:
                 continue
 
             try:
-                await client.query(prompt)
-                async for message in client.receive_response():
-                    _render_message(message)
+                import time
+                t0 = time.monotonic()
+                with console.status(
+                    "[cyan]pensando…[/cyan]", spinner="dots"
+                ) as status:
+                    await client.query(prompt)
+                    async for message in client.receive_response():
+                        # Pause the spinner to render output without collisions.
+                        status.stop()
+                        _render_message(message)
+                        status.update(
+                            f"[cyan]pensando… "
+                            f"[dim]({time.monotonic() - t0:.0f}s)[/dim][/cyan]"
+                        )
+                        status.start()
             except Exception as exc:  # noqa: BLE001
                 console.print(f"[red]Agent error:[/red] {exc}")
 
 
+def _block_attr(block, name):
+    """Return block.name if an object attr, or block[name] if a dict."""
+    if isinstance(block, dict):
+        return block.get(name)
+    return getattr(block, name, None)
+
+
 def _render_message(message) -> None:
-    """Pretty-print a streaming message from ClaudeSDKClient."""
-    # The SDK yields structured messages; render any text blocks we see.
+    """Pretty-print a streaming message from ClaudeSDKClient.
+
+    Shows tool calls and results in real time so the user sees progress.
+    """
     for attr in ("content", "message"):
         content = getattr(message, attr, None)
         if content is None:
             continue
-        if isinstance(content, list):
-            for block in content:
-                text = getattr(block, "text", None) or (
-                    block.get("text") if isinstance(block, dict) else None
-                )
-                if text:
-                    console.print(f"[cyan]claude>[/cyan] {text}")
-        elif isinstance(content, str):
+        if isinstance(content, str):
             console.print(f"[cyan]claude>[/cyan] {content}")
+            continue
+        if not isinstance(content, list):
+            continue
+
+        for block in content:
+            btype = _block_attr(block, "type") or type(block).__name__.lower()
+            text = _block_attr(block, "text")
+
+            if text:
+                console.print(f"[cyan]claude>[/cyan] {text}")
+                continue
+
+            # Tool invocation
+            if "tool_use" in btype.lower():
+                name = _block_attr(block, "name") or "?"
+                short_name = name.split("__")[-1] if name else "?"
+                inp = _block_attr(block, "input") or {}
+                try:
+                    preview = ", ".join(
+                        f"{k}={v!r}" for k, v in list(inp.items())[:3]
+                    )
+                    if len(inp) > 3:
+                        preview += ", …"
+                except Exception:
+                    preview = ""
+                console.print(
+                    f"[dim]  → tool [bold]{short_name}[/bold]({preview})…[/dim]"
+                )
+                continue
+
+            # Tool result
+            if "tool_result" in btype.lower():
+                result = _block_attr(block, "content") or ""
+                if isinstance(result, list):
+                    pieces = []
+                    for item in result:
+                        t = _block_attr(item, "text")
+                        if t:
+                            pieces.append(t)
+                    result = "\n".join(pieces)
+                snippet = str(result).strip().replace("\n", " ")
+                if len(snippet) > 100:
+                    snippet = snippet[:100] + "…"
+                console.print(f"[dim]  ← {snippet}[/dim]")
+                continue
 
 
 def _cmd_open_chrome(argv: list[str]) -> int:
