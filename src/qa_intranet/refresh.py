@@ -78,6 +78,98 @@ def discover_menu() -> list[MenuNode]:
     return parse_menu_html(html, page_url=BASE_URL)
 
 
+def capture_network(output_path: Path) -> dict:
+    """Open a visible browser with the saved session and record every request
+    the user's navigation triggers on the intranettools host.
+
+    The user drives the browser manually (clicks, filters, reports). When they
+    come back to the terminal and press Enter, the browser closes and a JSONL
+    file is written with one event per line. Returns a summary dict.
+    """
+    import json
+
+    from playwright.sync_api import sync_playwright
+
+    state = _require_state()
+    captured: list[dict] = []
+    seen_api_urls: set[str] = set()
+
+    def _is_interesting(url: str) -> bool:
+        if "intranettools.esic.edu" not in url:
+            return False
+        # Skip static assets (noise in the log).
+        lower = url.lower()
+        boring = (".js", ".css", ".woff", ".woff2", ".ttf", ".svg", ".png",
+                  ".jpg", ".jpeg", ".gif", ".ico", ".map")
+        return not any(lower.split("?")[0].endswith(ext) for ext in boring)
+
+    with tempfile.TemporaryDirectory() as td:
+        with sync_playwright() as p:
+            browser, context = _launch_context(p, state, Path(td), headless=False)
+            page = context.new_page()
+
+            def on_request(request):
+                if _is_interesting(request.url):
+                    captured.append({
+                        "kind": "request",
+                        "method": request.method,
+                        "url": request.url,
+                        "resource_type": request.resource_type,
+                        "headers": {
+                            k: v for k, v in request.headers.items()
+                            if k.lower() in ("content-type", "accept", "authorization")
+                        },
+                    })
+
+            def on_response(response):
+                if not _is_interesting(response.url):
+                    return
+                ct = response.headers.get("content-type", "")
+                body_preview = None
+                if "json" in ct.lower():
+                    try:
+                        text = response.text()
+                        body_preview = text[:2000]
+                    except Exception:
+                        pass
+                    seen_api_urls.add(response.url.split("?")[0])
+                captured.append({
+                    "kind": "response",
+                    "status": response.status,
+                    "url": response.url,
+                    "content_type": ct,
+                    "body_preview": body_preview,
+                })
+
+            page.on("request", on_request)
+            page.on("response", on_response)
+
+            page.goto(BASE_URL, wait_until="load", timeout=60_000)
+
+            print()
+            print("=" * 70)
+            print(" Browser abierto. NAVEGA POR LOS INFORMES que te interesan:")
+            print("   - Cambia de titulación en el dropdown.")
+            print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
+            print("   - Cambia año y campus si puedes.")
+            print(" Cuando termines, vuelve aquí y pulsa ENTER.")
+            print("=" * 70)
+            input()
+
+            browser.close()
+
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    with output_path.open("w", encoding="utf-8") as f:
+        for entry in captured:
+            f.write(json.dumps(entry, ensure_ascii=False) + "\n")
+
+    return {
+        "events": len(captured),
+        "unique_api_urls": sorted(seen_api_urls),
+        "output_path": str(output_path.resolve()),
+    }
+
+
 def refresh_all(only_slug: Optional[str] = None) -> dict:
     """Refresh the cache (or a single report by slug). Returns a summary dict."""
     from playwright.sync_api import sync_playwright

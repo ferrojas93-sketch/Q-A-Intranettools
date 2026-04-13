@@ -135,6 +135,47 @@ def _render_message(message) -> None:
             console.print(f"[cyan]claude>[/cyan] {content}")
 
 
+def _cmd_capture_network(argv: list[str]) -> int:
+    import argparse
+    from pathlib import Path
+
+    from qa_intranet.refresh import NotAuthenticatedError, capture_network
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet capture-network",
+        description=(
+            "Open a visible browser with the saved session and record every "
+            "API-ish request your manual navigation triggers."
+        ),
+    )
+    parser.add_argument(
+        "--output",
+        default="network.jsonl",
+        help="JSONL file where the events are saved (default: network.jsonl)",
+    )
+    opts = parser.parse_args(argv)
+
+    try:
+        summary = capture_network(Path(opts.output))
+    except NotAuthenticatedError as exc:
+        console.print(f"[yellow]{exc}[/yellow]")
+        return 2
+    except Exception as exc:  # noqa: BLE001
+        console.print(f"[red]Capture failed:[/red] {exc}")
+        return 1
+
+    console.print(
+        f"[green]Captured[/green] {summary['events']} events to "
+        f"[bold]{summary['output_path']}[/bold]"
+    )
+    console.print(
+        f"[cyan]Unique API URLs ({len(summary['unique_api_urls'])}):[/cyan]"
+    )
+    for url in summary["unique_api_urls"]:
+        console.print(f"  {url}")
+    return 0
+
+
 def _cmd_dump_html(argv: list[str]) -> int:
     import argparse
 
@@ -190,11 +231,15 @@ def main() -> int:
         return asyncio.run(_chat_loop())
     if cmd == "dump-html":
         return _cmd_dump_html(args[1:])
+    if cmd == "capture-network":
+        return _cmd_capture_network(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
     console.print(
         "Usage: python -m qa_intranet "
-        "[login|refresh [slug]|list|chat|dump-html [--url URL] [--output PATH]]"
+        "[login|refresh [slug]|list|chat|"
+        "dump-html [--url URL] [--output PATH]|"
+        "capture-network [--output PATH]]"
     )
     return 1
 
