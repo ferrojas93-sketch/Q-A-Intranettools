@@ -96,8 +96,56 @@ def _describe_slicer(slicer_el) -> dict:
     return info
 
 
+def _shell_dropdowns(page) -> list[dict]:
+    """Find dropdowns in the Angular shell (outside the Power BI iframe).
+
+    The portal's TITULACIÓN selector lives there: it changes which Power BI
+    report is embedded, then the slicers inside the iframe become available.
+    """
+    main = page.main_frame
+    out: list[dict] = []
+    selectors = (
+        "mat-select",
+        "select",
+        "[role='combobox']",
+        ".dropdown-toggle",
+        "ng-select",
+    )
+    seen_labels: set[str] = set()
+    for sel in selectors:
+        try:
+            loc = main.locator(sel)
+            count = loc.count()
+        except Exception:
+            continue
+        for i in range(min(count, 30)):
+            try:
+                el = loc.nth(i)
+                label = (
+                    el.get_attribute("aria-label")
+                    or el.get_attribute("placeholder")
+                    or el.inner_text()
+                )
+                label = (label or "").strip()
+                if not label:
+                    continue
+                key = label[:80]
+                if key in seen_labels:
+                    continue
+                seen_labels.add(key)
+                out.append({
+                    "label": key,
+                    "css_selector": sel,
+                    "index": i,
+                    "kind": "shell",
+                })
+            except Exception:
+                continue
+    return out
+
+
 def inspect_filters(duration_hint_s: int = 0) -> dict:
-    """List the slicers on the active dashboard and their visible options."""
+    """List shell dropdowns AND Power BI slicers visible on the page."""
     with get_context(headless=False) as (_, context):
         page = _find_intranet_page(context)
         if page is None:
@@ -105,15 +153,8 @@ def inspect_filters(duration_hint_s: int = 0) -> dict:
                 "No hay pestañas abiertas en Chrome CDP. Abre el portal con "
                 "`python -m qa_intranet open-chrome`."
             )
+        shell = _shell_dropdowns(page)
         frames = _find_powerbi_frames(page)
-        if not frames:
-            return {
-                "page_url": page.url,
-                "frames": [],
-                "slicers": [],
-                "note": "No encontré iframes de Power BI en la página actual.",
-            }
-
         slicers: list[dict] = []
         for frame in frames:
             for candidate in _slicer_locators(frame):
@@ -127,6 +168,7 @@ def inspect_filters(duration_hint_s: int = 0) -> dict:
                         info = _describe_slicer(el)
                         info["frame_url"] = frame.url
                         info["index"] = i
+                        info["kind"] = "slicer"
                         if info["label"] or info["options_sample"]:
                             slicers.append(info)
                     except Exception:
@@ -135,6 +177,7 @@ def inspect_filters(duration_hint_s: int = 0) -> dict:
         return {
             "page_url": page.url,
             "frame_count": len(frames),
+            "shell_filters": shell,
             "slicers": slicers,
         }
 
@@ -205,12 +248,89 @@ def _set_slicer_value(frame, label_query: str, value: str, timeout_ms: int = 500
         pass
 
 
+def _set_shell_dropdown(page, label_query: str, value: str, timeout_ms: int = 5000):
+    """Open a shell-level dropdown (Angular) and select a value by substring."""
+    rx = re.compile(re.escape(label_query), re.IGNORECASE)
+    main = page.main_frame
+    selectors = (
+        "mat-select", "select", "[role='combobox']", ".dropdown-toggle",
+        "ng-select",
+    )
+    target = None
+    for sel in selectors:
+        try:
+            candidates = main.locator(sel)
+            count = candidates.count()
+        except Exception:
+            continue
+        for i in range(min(count, 30)):
+            try:
+                el = candidates.nth(i)
+                txt = (el.get_attribute("aria-label")
+                       or el.get_attribute("placeholder")
+                       or el.inner_text() or "")
+                if rx.search(txt):
+                    target = el
+                    break
+            except Exception:
+                continue
+        if target is not None:
+            break
+    if target is None:
+        raise RuntimeError(
+            f"No encontré un dropdown del shell con etiqueta '{label_query}'."
+        )
+
+    # Native <select> has a special API.
+    try:
+        tag = target.evaluate("el => el.tagName.toLowerCase()")
+    except Exception:
+        tag = ""
+    if tag == "select":
+        target.select_option(label=value, timeout=timeout_ms)
+        return
+
+    target.click(timeout=timeout_ms)
+    # Try to find an option with the value
+    option = None
+    for sel in ("[role='option']", "mat-option", ".dropdown-item",
+                "ng-option", "li[role='option']"):
+        try:
+            opts = main.locator(sel)
+            n = opts.count()
+        except Exception:
+            continue
+        for j in range(min(n, 200)):
+            try:
+                o = opts.nth(j)
+                t = (o.inner_text() or "").strip()
+                if value.lower() in t.lower():
+                    option = o
+                    break
+            except Exception:
+                continue
+        if option is not None:
+            break
+    if option is None:
+        raise RuntimeError(
+            f"Abrí el dropdown shell '{label_query}' pero no encontré "
+            f"una opción que contenga '{value}'."
+        )
+    option.click(timeout=timeout_ms)
+
+
 def apply_and_capture(
     filters: dict[str, str], duration_s: int = 20
 ) -> dict[str, Any]:
-    """Apply the given filters on the live Chrome page and capture responses."""
+    """Apply the given filters on the live Chrome page and capture responses.
+
+    For each filter we first try to apply it as a shell dropdown (Angular),
+    and if that fails fall back to a Power BI slicer inside the iframe.
+    Capture stops early once 5s pass without new data responses.
+    """
     applied: list[str] = []
     errors: list[str] = []
+    response_count = {"n": 0}
 
     with get_context(headless=False) as (_, context):
         page = _find_intranet_page(context)
@@ -219,23 +339,51 @@ def apply_and_capture(
                 "No hay pestaña de intranettools abierta en el Chrome CDP."
             )
 
-        # Start tracing BEFORE we change filters so the triggered requests
-        # are recorded.
+        # Count interesting responses so we can stop early.
+        def on_response(response):
+            try:
+                if _is_data_url(response.url):
+                    response_count["n"] += 1
+            except Exception:
+                pass
+        context.on("response", on_response)
+
         context.tracing.start(screenshots=False, snapshots=False, sources=False)
         try:
-            frames = _find_powerbi_frames(page)
-            target_frame = frames[0] if frames else page.main_frame
-
             for name, value in (filters or {}).items():
+                shell_err = None
+                try:
+                    _set_shell_dropdown(page, name, value)
+                    applied.append(f"shell:{name} = {value}")
+                    time.sleep(2)  # let the iframe re-load
+                    continue
+                except Exception as exc:  # noqa: BLE001
+                    shell_err = exc
+
+                # Fall back to slicers inside the Power BI iframe.
+                frames = _find_powerbi_frames(page)
+                target_frame = frames[0] if frames else page.main_frame
                 try:
                     _set_slicer_value(target_frame, name, value)
-                    applied.append(f"{name} = {value}")
+                    applied.append(f"slicer:{name} = {value}")
                     time.sleep(1)
                 except Exception as exc:  # noqa: BLE001
-                    errors.append(f"{name}={value}: {exc}")
+                    errors.append(
+                        f"{name}={value}: shell({shell_err}); slicer({exc})"
+                    )
 
-            # Let Power BI finish issuing queries.
-            time.sleep(max(duration_s, 5))
+            # Wait for queries with early stop: if no new response in 5s,
+            # consider the dashboard finished refreshing.
+            deadline = time.monotonic() + max(duration_s, 5)
+            quiet_since = time.monotonic()
+            last_count = response_count["n"]
+            while time.monotonic() < deadline:
+                time.sleep(0.5)
+                if response_count["n"] != last_count:
+                    last_count = response_count["n"]
+                    quiet_since = time.monotonic()
+                elif time.monotonic() - quiet_since > 5:
+                    break
 
             with tempfile.TemporaryDirectory() as td:
                 trace_path = Path(td) / "trace.zip"
