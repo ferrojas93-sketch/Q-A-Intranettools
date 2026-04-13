@@ -10,7 +10,8 @@ from __future__ import annotations
 from pathlib import Path
 from typing import Optional
 
-from qa_intranet.auth import has_profile, persistent_context
+from qa_intranet.auth import get_context, has_profile
+from qa_intranet.config import CDP_URL
 from qa_intranet.cache import (
     get_engine,
     get_report_by_slug,
@@ -41,7 +42,7 @@ def fetch_page_html(
     _require_profile()
     target = url or BASE_URL
 
-    with persistent_context(headless=True) as (_, context):
+    with get_context(headless=True) as (_, context):
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(target, wait_until="load", timeout=timeout_ms)
         # Give Angular time to bootstrap and fire its initial API calls.
@@ -82,54 +83,71 @@ def capture_network(output_path: Path) -> dict:
         # Keep any host — tokens often come from microsoftonline.com too.
         return True
 
-    with persistent_context(headless=False) as (_, context):
-        page = context.pages[0] if context.pages else context.new_page()
-
-        def on_request(request):
-            if _is_interesting(request.url):
-                captured.append({
-                    "kind": "request",
-                    "method": request.method,
-                    "url": request.url,
-                    "resource_type": request.resource_type,
-                    "headers": {
-                        k: v for k, v in request.headers.items()
-                        if k.lower() in ("content-type", "accept", "authorization")
-                    },
-                })
-
-        def on_response(response):
-            if not _is_interesting(response.url):
-                return
-            ct = response.headers.get("content-type", "")
-            body_preview = None
-            if "json" in ct.lower():
-                try:
-                    body_preview = response.text()[:2000]
-                except Exception:
-                    pass
-                seen_api_urls.add(response.url.split("?")[0])
+    def on_request(request):
+        if _is_interesting(request.url):
             captured.append({
-                "kind": "response",
-                "status": response.status,
-                "url": response.url,
-                "content_type": ct,
-                "body_preview": body_preview,
+                "kind": "request",
+                "method": request.method,
+                "url": request.url,
+                "resource_type": request.resource_type,
+                "headers": {
+                    k: v for k, v in request.headers.items()
+                    if k.lower() in ("content-type", "accept", "authorization")
+                },
             })
 
-        page.on("request", on_request)
-        page.on("response", on_response)
+    def on_response(response):
+        if not _is_interesting(response.url):
+            return
+        ct = response.headers.get("content-type", "")
+        body_preview = None
+        if "json" in ct.lower():
+            try:
+                body_preview = response.text()[:2000]
+            except Exception:
+                pass
+            seen_api_urls.add(response.url.split("?")[0])
+        captured.append({
+            "kind": "response",
+            "status": response.status,
+            "url": response.url,
+            "content_type": ct,
+            "body_preview": body_preview,
+        })
 
-        page.goto(BASE_URL, wait_until="load", timeout=60_000)
+    with get_context(headless=False) as (_, context):
+        # Attach listeners to any page that already exists (CDP case) or to
+        # whatever we open (persistent case), and to newly opened pages.
+        def _wire(page):
+            page.on("request", on_request)
+            page.on("response", on_response)
 
-        print()
-        print("=" * 70)
-        print(" Browser abierto. NAVEGA POR LOS INFORMES que te interesan:")
-        print("   - Cambia de titulación en el dropdown.")
-        print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
-        print("   - Cambia año y campus si puedes.")
-        print(" Cuando termines, vuelve aquí y pulsa ENTER.")
-        print("=" * 70)
+        for existing in context.pages:
+            _wire(existing)
+        context.on("page", _wire)
+
+        if CDP_URL:
+            print()
+            print("=" * 70)
+            print(" Conectado a tu Chrome via CDP.")
+            print(" Ve a la pestaña de intranettools (o abre una nueva) y NAVEGA:")
+            print("   - Cambia de titulación en el dropdown.")
+            print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
+            print("   - Cambia año y campus si puedes.")
+            print(" Cuando termines, vuelve aquí y pulsa ENTER.")
+            print("=" * 70)
+        else:
+            page = context.pages[0] if context.pages else context.new_page()
+            _wire(page)
+            page.goto(BASE_URL, wait_until="load", timeout=60_000)
+            print()
+            print("=" * 70)
+            print(" Browser abierto. NAVEGA POR LOS INFORMES que te interesan:")
+            print("   - Cambia de titulación en el dropdown.")
+            print("   - Abre varias pestañas inferiores (CUANTI, CUALI, etc.).")
+            print("   - Cambia año y campus si puedes.")
+            print(" Cuando termines, vuelve aquí y pulsa ENTER.")
+            print("=" * 70)
         input()
 
     output_path.parent.mkdir(parents=True, exist_ok=True)
@@ -151,7 +169,7 @@ def refresh_all(only_slug: Optional[str] = None) -> dict:
 
     summary = {"discovered": 0, "fetched": 0, "failed": 0, "errors": []}
 
-    with persistent_context(headless=True) as (_, context):
+    with get_context(headless=True) as (_, context):
         page = context.pages[0] if context.pages else context.new_page()
 
         page.goto(BASE_URL, wait_until="load", timeout=60_000)

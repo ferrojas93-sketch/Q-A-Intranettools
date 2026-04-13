@@ -1,16 +1,20 @@
-"""Azure AD login via Playwright with a persistent browser profile.
+"""Browser session management.
 
-Rather than serializing Playwright's `storage_state` (which can miss
-session-only tokens stored in localStorage/sessionStorage by Angular SPAs),
-we launch Chromium with a persistent user-data directory in
-``~/.qa_intranet/profile``. The browser behaves like a normal install:
-cookies, localStorage, IndexedDB, and any OAuth tokens survive across
-runs, so authenticated API calls fired by the dashboard work in
-subsequent headless invocations.
+Two modes are supported, chosen by the ``QA_INTRANET_CDP_URL`` env var:
 
-The directory lives inside the user's home, protected by the OS account;
-no encryption is applied on top because it doesn't add value (a user with
-read access to the profile can just launch the browser manually).
+1. **CDP attach** (recommended for corporate portals): the user runs their
+   own Chrome with ``--remote-debugging-port=9222``; we attach to it via
+   the DevTools Protocol, borrowing the existing profile and all the
+   corporate compliance state (Intune extensions, certificates, OAuth
+   tokens, etc.). Nothing is launched by Playwright.
+
+2. **Persistent profile**: launch a Chromium (or Edge/Chrome channel) with
+   a user-data-dir at ``~/.qa_intranet/profile`` and do our own SSO the
+   first time. Simple but fails when Conditional Access only admits
+   managed browsers.
+
+The ``get_context()`` helper hides the difference and yields a Playwright
+context plus a ``new_page()`` convenience.
 """
 from __future__ import annotations
 
@@ -18,10 +22,15 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Iterator
 
-from qa_intranet.config import BASE_URL, BROWSER_CHANNEL, USER_DIR, ensure_dirs
+from qa_intranet.config import (
+    BASE_URL,
+    BROWSER_CHANNEL,
+    CDP_URL,
+    USER_DIR,
+    ensure_dirs,
+)
 
 PROFILE_DIR = USER_DIR / "profile"
-
 LOGIN_HOST_FRAGMENTS = ("login.microsoftonline.com", "login.live.com", "adfs")
 
 
@@ -32,48 +41,90 @@ def _ensure_profile() -> Path:
 
 
 @contextmanager
-def persistent_context(headless: bool = True, **kwargs) -> Iterator[tuple]:
-    """Yield (playwright, context) using the persistent profile directory.
-
-    Respects QA_INTRANET_BROWSER: set to "msedge" or "chrome" to use the
-    corresponding browser installed on the system (required when Azure AD
-    Conditional Access blocks the bundled Chromium).
-    """
+def get_context(headless: bool = True, **launch_kwargs) -> Iterator[tuple]:
+    """Yield (playwright, context). Uses CDP if QA_INTRANET_CDP_URL is set,
+    otherwise launches a persistent context."""
     from playwright.sync_api import sync_playwright
 
-    _ensure_profile()
     with sync_playwright() as p:
-        launch_kwargs = {"headless": headless, **kwargs}
-        if BROWSER_CHANNEL:
-            launch_kwargs["channel"] = BROWSER_CHANNEL
-        context = p.chromium.launch_persistent_context(
-            str(PROFILE_DIR),
-            **launch_kwargs,
-        )
-        try:
-            yield p, context
-        finally:
-            context.close()
+        if CDP_URL:
+            browser = p.chromium.connect_over_cdp(CDP_URL)
+            # Reuse the user's real browser context so cookies/localStorage
+            # are the ones the portal already accepted.
+            context = (
+                browser.contexts[0] if browser.contexts else browser.new_context()
+            )
+            try:
+                yield p, context
+            finally:
+                # Just detach; don't close the user's browser.
+                browser.close()
+        else:
+            _ensure_profile()
+            kwargs = {"headless": headless, **launch_kwargs}
+            if BROWSER_CHANNEL:
+                kwargs["channel"] = BROWSER_CHANNEL
+            context = p.chromium.launch_persistent_context(
+                str(PROFILE_DIR), **kwargs
+            )
+            try:
+                yield p, context
+            finally:
+                context.close()
+
+
+# Backwards-compat alias used by some callers.
+persistent_context = get_context
 
 
 def has_profile() -> bool:
-    """True if the persistent profile exists and seems initialised."""
+    """True if we have some form of session available."""
+    if CDP_URL:
+        # Can't really tell without connecting; assume yes.
+        return True
     return PROFILE_DIR.exists() and any(PROFILE_DIR.iterdir())
 
 
-def interactive_login() -> None:
-    """Open a visible browser with the persistent profile; wait for user.
+def verify_connection() -> str:
+    """Open the base URL and return the final URL it settled on.
 
-    The user completes SSO + MFA manually. When they press Enter, the
-    profile is already saved on disk because Chromium writes it live —
-    there is nothing extra to serialise.
+    Raises on error. Used by the `login` command in CDP mode to confirm the
+    user's Chrome is reachable and has an active session.
     """
+    with get_context(headless=True) as (_, context):
+        page = context.new_page()
+        try:
+            page.goto(BASE_URL, wait_until="load", timeout=60_000)
+            page.wait_for_timeout(2000)
+            final = page.url
+            if any(frag in final for frag in LOGIN_HOST_FRAGMENTS):
+                raise RuntimeError(
+                    f"The attached browser is not logged in ({final}). "
+                    "Log into intranettools in that Chrome window first."
+                )
+            return final
+        finally:
+            page.close()
+
+
+def interactive_login() -> None:
+    """Entry point for the `login` command.
+
+    - In CDP mode: just verify we can reach the portal via the user's Chrome.
+    - In persistent mode: open a visible browser and wait for the user.
+    """
+    if CDP_URL:
+        print(f"Verifying CDP connection to {CDP_URL}…")
+        final = verify_connection()
+        print(f"OK. Currently on: {final}")
+        return
+
     print(f"Opening {BASE_URL} in a visible browser window…")
     print("→ Complete the SSO login (and MFA) there.")
     print("→ When you see the intranet dashboard, come back here and press ENTER.")
     print("   (Press Ctrl+C to cancel.)")
 
-    with persistent_context(headless=False) as (_, context):
+    with get_context(headless=False) as (_, context):
         page = context.pages[0] if context.pages else context.new_page()
         page.goto(BASE_URL, wait_until="domcontentloaded")
 

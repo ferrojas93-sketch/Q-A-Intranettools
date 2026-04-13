@@ -19,6 +19,12 @@ MODEL = os.environ.get("QA_INTRANET_MODEL", "claude-sonnet-4-6")
 # browsers (Edge/Chrome installed by IT); in that case set this to "msedge".
 BROWSER_CHANNEL = os.environ.get("QA_INTRANET_BROWSER", "").strip() or None
 
+# Optional CDP endpoint. If set (e.g. "http://localhost:9222"), Playwright
+# connects to an already-running browser that the user started with
+# --remote-debugging-port=9222. This sidesteps Conditional Access/compliance
+# issues because the browser instance is the user's own corporate Chrome.
+CDP_URL = os.environ.get("QA_INTRANET_CDP_URL", "").strip() or None
+
 # Project-local artifacts (kept out of git)
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 CACHE_DB_PATH = PROJECT_ROOT / "cache.db"

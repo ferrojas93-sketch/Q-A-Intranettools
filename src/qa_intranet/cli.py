@@ -135,6 +135,80 @@ def _render_message(message) -> None:
             console.print(f"[cyan]claude>[/cyan] {content}")
 
 
+def _cmd_open_chrome(argv: list[str]) -> int:
+    """Launch the user's own Chrome with --remote-debugging-port.
+
+    Uses a dedicated user-data-dir so it doesn't conflict with a Chrome that
+    the user may already have open. The user logs in there once (SSO + MFA)
+    and then leaves the window open while running other qa_intranet commands
+    (they will attach to this Chrome via CDP).
+    """
+    import argparse
+    import shutil
+    import subprocess
+    from pathlib import Path
+
+    parser = argparse.ArgumentParser(
+        prog="qa_intranet open-chrome",
+        description=(
+            "Launch Chrome with --remote-debugging-port so that qa_intranet "
+            "can attach to it via CDP. Keep this Chrome window open while "
+            "running login/refresh/capture-network."
+        ),
+    )
+    parser.add_argument("--port", type=int, default=9222, help="CDP port (default 9222)")
+    parser.add_argument(
+        "--profile-dir",
+        default=str(Path.home() / "ChromeQAIntranet"),
+        help="User-data-dir for this Chrome instance",
+    )
+    parser.add_argument(
+        "--chrome-path",
+        default=None,
+        help="Override path to chrome.exe (auto-detected on Windows by default)",
+    )
+    parser.add_argument(
+        "--url",
+        default="https://intranettools.esic.edu/informes/encuestas",
+        help="URL to open in the first tab",
+    )
+    opts = parser.parse_args(argv)
+
+    chrome_path = opts.chrome_path
+    if not chrome_path:
+        candidates = [
+            r"C:\Program Files\Google\Chrome\Application\chrome.exe",
+            r"C:\Program Files (x86)\Google\Chrome\Application\chrome.exe",
+            shutil.which("chrome"),
+            shutil.which("google-chrome"),
+        ]
+        chrome_path = next((c for c in candidates if c and Path(c).exists()), None)
+    if not chrome_path:
+        console.print(
+            "[red]Could not find chrome.exe.[/red] Pass --chrome-path explicitly."
+        )
+        return 1
+
+    profile = Path(opts.profile_dir)
+    profile.mkdir(parents=True, exist_ok=True)
+
+    cmd = [
+        chrome_path,
+        f"--remote-debugging-port={opts.port}",
+        f"--user-data-dir={profile}",
+        opts.url,
+    ]
+    console.print(f"[green]Launching:[/green] {' '.join(cmd)}")
+    subprocess.Popen(cmd, close_fds=True)
+    console.print(
+        "[cyan]Chrome launched.[/cyan] Log into ESIC there and keep the "
+        "window open.\n"
+        f"Set [bold]QA_INTRANET_CDP_URL=http://localhost:{opts.port}[/bold] "
+        "in your .env so the other commands attach to this Chrome."
+    )
+    return 0
+
+
 def _cmd_capture_network(argv: list[str]) -> int:
     import argparse
     from pathlib import Path
@@ -233,13 +307,16 @@ def main() -> int:
         return _cmd_dump_html(args[1:])
     if cmd == "capture-network":
         return _cmd_capture_network(args[1:])
+    if cmd == "open-chrome":
+        return _cmd_open_chrome(args[1:])
 
     console.print(f"[red]Unknown command:[/red] {cmd}")
     console.print(
         "Usage: python -m qa_intranet "
         "[login|refresh [slug]|list|chat|"
         "dump-html [--url URL] [--output PATH]|"
-        "capture-network [--output PATH]]"
+        "capture-network [--output PATH]|"
+        "open-chrome [--port N] [--chrome-path PATH]]"
     )
     return 1
 
