@@ -667,3 +667,32 @@ html, body {
   pointer-events: none;
   z-index: 9999;
 }
+
+/* ===== Slot para imágenes (cuando las añadas en assets/img/) ===== */
+.slide-image {
+  width: 100%;
+  border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
+  object-fit: cover;
+  max-height: 70vh;
+}
+.slide-image.hero-bg {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  border-radius: 0;
+  opacity: 0.35;
+  z-index: 0;
+  filter: saturate(1.1) contrast(1.05);
+}
+.slide-image.framed {
+  border: 2px solid var(--border-hi);
+}
+.image-caption {
+  margin-top: 8px;
+  font-size: 14px;
+  color: var(--text-lo);
+  font-style: italic;
+  text-align: center;
+}
