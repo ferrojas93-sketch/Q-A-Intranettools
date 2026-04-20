@@ -1,0 +1,661 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>La UE para jóvenes · 20 min</title>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.css">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/theme/black.css" id="theme">
+<link rel="stylesheet" href="styles/custom.css">
+</head>
+<body>
+<canvas id="confetti-canvas"></canvas>
+
+<div class="reveal">
+<div class="slides">
+
+<!-- 1 · PORTADA -->
+<section data-background-color="#0B0F1A">
+  <div class="hero">
+    <span class="tag">🇪🇺 20 minutos · Grado Medio</span>
+    <h1>La UE<br>no es lo que te contaron</h1>
+    <p class="subtitle">Un server de 27 países, 449 millones de players y oportunidades que nadie te explica en clase.</p>
+  </div>
+  <aside class="notes">
+    Bienvenida energética. "Vamos a dejar de ver la UE como algo de políticos con corbata y verla como lo que es: un sistema que puede pagarte un Interrail gratis."
+    Tiempo: 30s.
+  </aside>
+</section>
+
+<!-- 2 · QUÉ VAMOS A HACER -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>PLAN DE HOY</div>
+  <div style="padding: 80px 80px 60px;">
+    <h2 style="background: var(--grad-primary); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">En 20 minutos vas a saber:</h2>
+    <div class="grid grid-3 mt-4">
+      <div class="card">
+        <span class="icon">🇪🇺</span>
+        <h3>Qué es la UE</h3>
+        <p>En serio, sin rollo de libro de texto.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🎁</span>
+        <h3>Cómo te beneficia</h3>
+        <p>Ejemplos de tu vida: Amazon, TikTok, Ryanair…</p>
+      </div>
+      <div class="card">
+        <span class="icon">🚀</span>
+        <h3>Qué puedes sacarle</h3>
+        <p>Interrail gratis, prácticas pagadas, voluntariado.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Marca las 3 partes y promete la "recompensa" al final (QR con oportunidades). Tiempo: 45s.</aside>
+</section>
+
+<!-- 3 · QUIZ ROMPEHIELO — intro -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>RONDA 1 · ¿CUÁNTO SABES?</div>
+  <div class="hero" style="padding: 0;">
+    <span class="tag" style="background: rgba(255, 78, 205, 0.15); border-color: var(--neon-pink); color: var(--neon-pink);">🎮 PRESS START</span>
+    <h1 style="font-size: clamp(60px, 10vw, 150px) !important;">QUIZ</h1>
+    <p class="subtitle">5 preguntas. Sin móviles, a mano alzada. A ver quién se marca un <em>GG</em>.</p>
+  </div>
+  <aside class="notes">Pídeles que levanten la mano. Crea ambiente competitivo. Tiempo: 20s.</aside>
+</section>
+
+<!-- 4 · QUIZ P1 — Bandera -->
+<section data-background-color="#0B0F1A" data-quiz="q1">
+  <div class="slide-header"><span class="dot"></span>PREGUNTA 1 / 5</div>
+  <div class="quiz" style="padding-top: 80px;">
+    <span class="flag-question">🇳🇱</span>
+    <div class="question">¿De qué país es esta bandera?</div>
+    <div class="options">
+      <button class="option" data-letter="A">Luxemburgo</button>
+      <button class="option" data-letter="B" data-correct>Países Bajos</button>
+      <button class="option" data-letter="C">Croacia</button>
+      <button class="option" data-letter="D">Rusia (trampa 😈)</button>
+    </div>
+    <div class="feedback"></div>
+  </div>
+  <aside class="notes">Trampa: Luxemburgo tiene una bandera casi igual, pero con azul más claro. Rusia NO está en la UE — es una bandera trampa. Tiempo: 30s.</aside>
+</section>
+
+<!-- 5 · QUIZ P2 — Euro -->
+<section data-background-color="#0B0F1A" data-quiz="q2">
+  <div class="slide-header"><span class="dot"></span>PREGUNTA 2 / 5</div>
+  <div class="quiz" style="padding-top: 80px;">
+    <div class="question" style="margin-top: 40px;">¿Qué país de la UE <strong>NO usa el euro</strong>?</div>
+    <div class="options">
+      <button class="option" data-letter="A">Portugal</button>
+      <button class="option" data-letter="B">Italia</button>
+      <button class="option" data-letter="C" data-correct>Suecia</button>
+      <button class="option" data-letter="D">Grecia</button>
+    </div>
+    <div class="feedback"></div>
+  </div>
+  <aside class="notes">Sólo 20 de 27 países usan el euro. Suecia, Dinamarca, Polonia, Chequia, Hungría, Rumanía y Bulgaria tienen su propia moneda. Tiempo: 30s.</aside>
+</section>
+
+<!-- 6 · QUIZ P3 — Schengen -->
+<section data-background-color="#0B0F1A" data-quiz="q3">
+  <div class="slide-header"><span class="dot"></span>PREGUNTA 3 / 5</div>
+  <div class="quiz" style="padding-top: 80px;">
+    <div class="question" style="margin-top: 40px;">¿Qué es <strong style="color: var(--ue-yellow);">Schengen</strong>?</div>
+    <div class="options">
+      <button class="option" data-letter="A">Una ciudad alemana famosa por su cerveza</button>
+      <button class="option" data-letter="B" data-correct>La zona de Europa sin controles de fronteras</button>
+      <button class="option" data-letter="C">Un impuesto europeo</button>
+      <button class="option" data-letter="D">Un tipo de queso suizo</button>
+    </div>
+    <div class="feedback"></div>
+  </div>
+  <aside class="notes">Schengen = un pueblito de Luxemburgo donde en 1985 se firmó el acuerdo. Hoy son 29 países (incluye Suiza, Noruega, Islandia que NO están en la UE). Viajas con el DNI, sin pasaporte. Tiempo: 35s.</aside>
+</section>
+
+<!-- 7 · QUIZ P4 — Parlamento -->
+<section data-background-color="#0B0F1A" data-quiz="q4">
+  <div class="slide-header"><span class="dot"></span>PREGUNTA 4 / 5</div>
+  <div class="quiz" style="padding-top: 80px;">
+    <div class="question" style="margin-top: 40px;">¿Quién elige a los <strong>eurodiputados</strong>?</div>
+    <div class="options">
+      <button class="option" data-letter="A">El presidente del Gobierno</button>
+      <button class="option" data-letter="B">Los partidos políticos</button>
+      <button class="option" data-letter="C" data-correct>Los ciudadanos, votando cada 5 años</button>
+      <button class="option" data-letter="D">La Reina de Inglaterra</button>
+    </div>
+    <div class="feedback"></div>
+  </div>
+  <aside class="notes">Tú. Literalmente tú. A los 18 puedes votar en las europeas. Próximas: 2029. Tiempo: 30s.</aside>
+</section>
+
+<!-- 8 · QUIZ P5 — Cuántos países -->
+<section data-background-color="#0B0F1A" data-quiz="q5">
+  <div class="slide-header"><span class="dot"></span>PREGUNTA 5 / 5</div>
+  <div class="quiz" style="padding-top: 80px;">
+    <div class="question" style="margin-top: 40px;">¿Cuántos países forman la UE <strong>HOY</strong>?</div>
+    <div class="options">
+      <button class="option" data-letter="A">25</button>
+      <button class="option" data-letter="B" data-correct>27</button>
+      <button class="option" data-letter="C">30</button>
+      <button class="option" data-letter="D">Depende del día 🤷</button>
+    </div>
+    <div class="feedback"></div>
+  </div>
+  <aside class="notes">27 países. Reino Unido se salió en 2020 (Brexit). Croacia fue el último en entrar en 2013. Hay candidatos: Ucrania, Moldavia, Albania, Serbia… Tiempo: 30s.</aside>
+</section>
+
+<!-- 9 · QUÉ ES LA UE — cifras XXL -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>BLOQUE 1 · QUÉ ES LA UE</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>La UE, en 4 números.</h2>
+    <div class="grid grid-4 mt-4">
+      <div class="stat"><span class="num">27</span><span class="label">Países</span></div>
+      <div class="stat"><span class="num">449M</span><span class="label">Habitantes</span></div>
+      <div class="stat"><span class="num">24</span><span class="label">Lenguas oficiales</span></div>
+      <div class="stat"><span class="num">20</span><span class="label">Países con €</span></div>
+    </div>
+    <p class="lead center mt-4" style="margin: 40px auto 0;">Es la unión política y económica más grande del planeta después de… nada. No hay otra igual.</p>
+  </div>
+  <aside class="notes">449M = más del doble que EEUU (330M). Cuando ves "hecho en la UE" en una etiqueta, eso significa que 27 países cumplen las mismas normas. Tiempo: 45s.</aside>
+</section>
+
+<!-- 10 · ANALOGÍA DISCORD SERVER -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>EXPLICADO FÁCIL</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>Piénsalo como un <em>server de Discord</em>.</h2>
+    <div class="analogy">
+      <span class="emoji">💬</span>
+      <div class="text">La UE es un <strong>server con 27 canales</strong> (países). Cada canal tiene sus reglas, pero hay <strong>reglas globales del server</strong>: nadie spamea, todos pueden hablar, y si alguien rompe normas, hay admins.</div>
+    </div>
+    <div class="grid grid-3 mt-4">
+      <div class="card"><span class="icon">🎮</span><h3>Reglas del server</h3><p>Leyes que aplican a los 27 países: medio ambiente, datos, consumo.</p></div>
+      <div class="card"><span class="icon">🗣️</span><h3>Tu voz</h3><p>Votas cada 5 años a los representantes del server.</p></div>
+      <div class="card"><span class="icon">🚪</span><h3>Libre paso</h3><p>Saltas de un canal a otro sin pedir permiso (Schengen).</p></div>
+    </div>
+  </div>
+  <aside class="notes">Aquí enganchas con los gamers. La analogía Discord es limpia: canales = países, reglas de server = leyes europeas, admins = Comisión, mods elegidos por ti = Parlamento. Tiempo: 60s.</aside>
+</section>
+
+<!-- 11 · MAPA UE -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>EL MAPA</div>
+  <div style="padding: 100px 80px 60px; text-align: center;">
+    <h2>No todos los países juegan al mismo nivel.</h2>
+    <div class="grid grid-3 mt-4" style="max-width: 1400px; margin: 40px auto 0;">
+      <div class="card" style="border-top: 4px solid var(--ue-blue-soft);">
+        <span class="icon">🇪🇺</span>
+        <h3 style="color: #9ab4ff;">En la UE · 27</h3>
+        <p>Comparten mercado, leyes y presupuesto. España, Francia, Alemania, Italia…</p>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--ue-yellow);">
+        <span class="icon">💶</span>
+        <h3>En el Euro · 20</h3>
+        <p>Usan la moneda común. Faltan Suecia, Dinamarca, Polonia, Chequia, Hungría, Rumanía y Bulgaria.</p>
+      </div>
+      <div class="card" style="border-top: 4px solid var(--neon-cyan);">
+        <span class="icon">🛂</span>
+        <h3 style="color: var(--neon-cyan);">En Schengen · 29</h3>
+        <p>Sin controles de fronteras. Incluye a Suiza, Noruega, Islandia y Liechtenstein (¡que NO están en la UE!).</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Aquí viene la confusión típica: "¿Suiza está en la UE?" NO, pero sí en Schengen. Noruega tampoco. Son círculos concéntricos distintos. Tiempo: 60s.</aside>
+</section>
+
+<!-- 12 · LÍNEA DEL TIEMPO -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>CÓMO SE HIZO TAN GRANDE</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>De 6 a 27 países en 70 años.</h2>
+    <div class="timeline mt-4">
+      <div class="tl-node"><div class="tl-dot">1950</div><div class="tl-label">6 países<br>CECA</div></div>
+      <div class="tl-node"><div class="tl-dot">1973</div><div class="tl-label">9 países<br>Reino Unido</div></div>
+      <div class="tl-node"><div class="tl-dot">1986</div><div class="tl-label">12 países<br>España 🇪🇸</div></div>
+      <div class="tl-node"><div class="tl-dot">2002</div><div class="tl-label">Nace el €<br>en tu bolsillo</div></div>
+      <div class="tl-node"><div class="tl-dot">2013</div><div class="tl-label">28 países<br>Croacia</div></div>
+      <div class="tl-node"><div class="tl-dot">2020</div><div class="tl-label">27 países<br>Brexit 🇬🇧</div></div>
+    </div>
+    <p class="lead center mt-4">Próximos candidatos: Ucrania, Moldavia, Albania, Montenegro, Serbia, Macedonia del Norte, Bosnia, Turquía, Georgia.</p>
+  </div>
+  <aside class="notes">Empezó como un club para que Francia y Alemania no volvieran a pelearse tras 2 guerras mundiales. Spoiler: funcionó. Tiempo: 45s.</aside>
+</section>
+
+<!-- 13 · QUIÉN PAGA LA UE -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>BLOQUE 2 · QUIÉN PAGA ESTO</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>¿De dónde sale el dinero de la UE?</h2>
+    <div class="split mt-4">
+      <div>
+        <div style="width: 100%; max-width: 480px; margin: 0 auto;">
+          <canvas id="budget-donut" data-chart="budget"></canvas>
+        </div>
+      </div>
+      <div>
+        <p class="lead">El presupuesto UE sale de <strong>tres bolsillos</strong>:</p>
+        <ul style="list-style: none; padding: 0; margin-top: 20px;">
+          <li style="padding: 10px 0; font-size: 22px;"><span class="badge badge-yellow">PIB</span> &nbsp;Cada país aporta según lo rico que sea (~70%)</li>
+          <li style="padding: 10px 0; font-size: 22px;"><span class="badge badge-blue">IVA</span> &nbsp;Una parte del IVA que pagas en tus compras (~15%)</li>
+          <li style="padding: 10px 0; font-size: 22px;"><span class="badge badge-cyan">Aduanas</span> &nbsp;Aranceles de importaciones desde fuera (~15%)</li>
+        </ul>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">El presupuesto UE ≈ 170.000M €/año. Parece mucho pero es solo ~1% del PIB europeo. Menos de lo que gasta España en pensiones en un mes. Tiempo: 60s.</aside>
+</section>
+
+<!-- 14 · CUÁNTO CUESTA -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>A TI, EN TU BOLSILLO</div>
+  <div style="padding: 120px 80px 60px; text-align: center;">
+    <p class="muted" style="font-size: 20px; letter-spacing: 0.2em; text-transform: uppercase;">Te cuesta aproximadamente</p>
+    <div class="stat mt-2">
+      <span class="num" style="font-size: clamp(100px, 18vw, 260px);">≈ 250 €</span>
+      <span class="label">por persona / año</span>
+    </div>
+    <div class="analogy mt-4" style="max-width: 900px; margin: 40px auto 0;">
+      <span class="emoji">🎧</span>
+      <div class="text">Eso es <strong>menos que Netflix Premium + Spotify</strong> durante un año. A cambio, mercado único, derechos, protección al consumidor, Erasmus+…</div>
+    </div>
+  </div>
+  <aside class="notes">Dato real: el presupuesto UE son ~170.000M€ divididos entre 449M personas ≈ 380€/persona, pero España aporta algo menos que recibe. 250€ es una estimación conservadora. Tiempo: 45s.</aside>
+</section>
+
+<!-- 15 · BLOQUE 3 INTRO — BENEFICIOS -->
+<section data-background-color="#0B0F1A">
+  <div class="hero">
+    <span class="tag">BLOQUE 3</span>
+    <h1 style="font-size: clamp(56px, 8vw, 110px) !important;">Y tú, ¿qué sacas?</h1>
+    <p class="subtitle">Te cuento 3 beneficios reales. No libro de texto, ejemplos de tu semana.</p>
+  </div>
+  <aside class="notes">Transición. Hasta aquí era info teórica. Ahora viene lo que les toca directamente. Tiempo: 15s.</aside>
+</section>
+
+<!-- 16 · DERECHOS CLAVE -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>TUS SUPERPODERES UE</div>
+  <div style="padding: 90px 80px 50px;">
+    <h2>6 derechos que tienes por ser <em>europeo/a</em>.</h2>
+    <div class="grid grid-3 mt-4">
+      <div class="card"><span class="icon">✈️</span><h3>Viajar</h3><p>Pillas un Ryanair a Roma con solo el DNI. Sin visados, sin fronteras.</p></div>
+      <div class="card"><span class="icon">💼</span><h3>Trabajar</h3><p>Tu prima se muda a Dublín a currar en un bar. No pide permiso a nadie.</p></div>
+      <div class="card"><span class="icon">🎓</span><h3>Estudiar</h3><p>Pagas las mismas tasas que un alemán en una uni alemana. Erasmus+ te ayuda.</p></div>
+      <div class="card"><span class="icon">🗳️</span><h3>Votar</h3><p>Si vives en otro país UE, puedes votar en las municipales y europeas allí.</p></div>
+      <div class="card"><span class="icon">🛒</span><h3>Comprar seguro</h3><p>Compras en Amazon.de y te estafan → tienes derecho de devolución (14 días).</p></div>
+      <div class="card"><span class="icon">🔒</span><h3>Tus datos</h3><p>TikTok, Instagram, Google no hacen lo que quieren contigo. Gracias al RGPD.</p></div>
+    </div>
+  </div>
+  <aside class="notes">Menciona el RGPD: esa ventana de "aceptar cookies" en las webs es por esta ley. Cuando Meta fue multada con 1.200M€, fue un tribunal europeo. Tiempo: 60s.</aside>
+</section>
+
+<!-- 17 · EJEMPLOS REALES -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>EN TU VIDA DE VERDAD</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>3 cosas que te pasan <em>gracias a la UE</em>.</h2>
+    <div class="grid grid-3 mt-4">
+      <div class="card">
+        <span class="icon">📱</span>
+        <h3>WhatsApp sin roaming</h3>
+        <p>Te vas a Italia de vacaciones y usas tus gigas como en España. Antes de 2017, te cobraban un pastón.</p>
+      </div>
+      <div class="card">
+        <span class="icon">👟</span>
+        <h3>Zapatillas rotas desde Alemania</h3>
+        <p>Compras unas Nike en una tienda alemana, te llegan rotas. Tienes 14 días para devolverlas. Sí o sí.</p>
+      </div>
+      <div class="card">
+        <span class="icon">🚗</span>
+        <h3>Cargador único USB-C</h3>
+        <p>Desde 2024 <strong>todo</strong> móvil nuevo tiene que usar USB-C en la UE. Adiós al cajón de cables. Hasta Apple se ha tenido que adaptar.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">El caso Apple es oro: la UE obligó a Apple a cambiar el Lightning por USB-C porque "basta ya de cables distintos". Poder regulatorio bruto. Tiempo: 60s.</aside>
+</section>
+
+<!-- 18 · INSTITUCIONES = DISCORD STAFF -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>BLOQUE 4 · CÓMO FUNCIONA</div>
+  <div style="padding: 80px 80px 40px;">
+    <h2>El <em>staff</em> del server UE.</h2>
+    <p class="lead" style="margin-bottom: 30px;">Cada institución es un rol distinto. Y sí, es como Discord.</p>
+    <div class="grid grid-3">
+      <div class="inst-card">
+        <div class="role">🎮 Los representantes</div>
+        <h3>Parlamento Europeo</h3>
+        <p>705 personas elegidas por <strong>tu voto</strong> cada 5 años. Aprueban o tumban las leyes.</p>
+      </div>
+      <div class="inst-card">
+        <div class="role">🛡️ Los moderadores</div>
+        <h3>Comisión Europea</h3>
+        <p><strong>Proponen las leyes</strong> y vigilan que se cumplan. Son los que multan a Google y Meta.</p>
+      </div>
+      <div class="inst-card">
+        <div class="role">👑 Los dueños</div>
+        <h3>Consejo Europeo</h3>
+        <p>Los <strong>jefes de gobierno</strong> de los 27 países. Marcan el rumbo general.</p>
+      </div>
+      <div class="inst-card">
+        <div class="role">⚖️ Los admins</div>
+        <h3>Tribunal de Justicia</h3>
+        <p>Resuelven broncas. Deciden qué es legal y qué no en toda la UE.</p>
+      </div>
+      <div class="inst-card">
+        <div class="role">💶 El economista</div>
+        <h3>Banco Central (BCE)</h3>
+        <p>Controlan el <strong>euro</strong>. Suben o bajan los tipos de interés (tu hipoteca futura).</p>
+      </div>
+      <div class="inst-card" style="background: linear-gradient(135deg, rgba(255,204,0,0.12), rgba(0,51,153,0.12)); border-color: var(--ue-yellow);">
+        <div class="role" style="color: var(--ue-yellow);">✨ TÚ</div>
+        <h3>El ciudadano</h3>
+        <p>Votas, reclamas, te presentas. El server no funciona sin los usuarios.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Los 705 eurodiputados se sientan por grupos políticos (no por países): Populares, Socialistas, Verdes, Liberales… Como los partidos nacionales pero a escala europea. Tiempo: 90s.</aside>
+</section>
+
+<!-- 19 · CÓMO SE APRUEBA UNA LEY UE -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>CÓMO SE HACE UNA LEY</div>
+  <div style="padding: 100px 80px 60px;">
+    <h2>De idea a ley, en 4 pasos.</h2>
+    <div class="timeline mt-4">
+      <div class="tl-node"><div class="tl-dot" style="background: var(--ue-yellow); color: var(--bg-0);">1</div><div class="tl-label"><strong>Comisión</strong><br>propone</div></div>
+      <div class="tl-node"><div class="tl-dot">2</div><div class="tl-label"><strong>Parlamento</strong><br>debate y vota</div></div>
+      <div class="tl-node"><div class="tl-dot">3</div><div class="tl-label"><strong>Consejo</strong><br>aprueba con países</div></div>
+      <div class="tl-node"><div class="tl-dot" style="background: var(--success); border-color: var(--neon-green); color: #fff;">✓</div><div class="tl-label"><strong>Se aplica</strong><br>en los 27 países</div></div>
+    </div>
+    <div class="analogy mt-4" style="max-width: 1000px; margin: 50px auto 0;">
+      <span class="emoji">💡</span>
+      <div class="text">Ejemplo real: la ley del <strong>cargador único USB-C</strong> empezó en 2021 con una propuesta de la Comisión, el Parlamento la votó en 2022, y desde <strong>2024</strong> es obligatoria.</div>
+    </div>
+  </div>
+  <aside class="notes">Entre 2 y 3 años suele durar el proceso. A veces más si hay polémica (como la ley de IA o la de migración). Tiempo: 45s.</aside>
+</section>
+
+<!-- 20 · BLOQUE 5 INTRO — OPORTUNIDADES -->
+<section data-background-color="#0B0F1A">
+  <div class="hero">
+    <span class="tag" style="background: rgba(0, 224, 255, 0.15); border-color: var(--neon-cyan); color: var(--neon-cyan);">BLOQUE 5 · ESTO ES LO GORDO</div>
+    <h1 style="font-size: clamp(56px, 8vw, 120px) !important;">Lo que<br>puedes pillar<br>gratis 🎁</h1>
+    <p class="subtitle">Interrail pagado, prácticas en Berlín, voluntariado en Grecia. En serio.</p>
+  </div>
+  <aside class="notes">Aquí tienes que subir la energía. Es la parte que más les va a importar. Avisa que hay QRs al final para apuntarse. Tiempo: 15s.</aside>
+</section>
+
+<!-- 21 · DISCOVEREU -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>OPORTUNIDAD 1 / 3</div>
+  <div style="padding: 80px 80px 40px;">
+    <div class="split">
+      <div>
+        <div class="opp-card">
+          <span class="opp-icon">🚂</span>
+          <div class="opp-meta">
+            <span class="badge badge-yellow">GRATIS</span>
+            <span class="badge badge-blue">18 años</span>
+            <span class="badge badge-cyan">7 días viajando</span>
+          </div>
+          <h3>DiscoverEU</h3>
+          <p style="font-size: 20px; color: var(--text-md);">Un <strong>pase Interrail gratis</strong> para recorrer Europa el año que cumples 18.</p>
+          <ul>
+            <li>Viajas solo o con hasta 4 amigos</li>
+            <li>Hasta 7 días viajando en 1 mes</li>
+            <li>Tarjeta con descuentos en hostels, museos, transporte</li>
+            <li>Convocatorias 2 veces al año</li>
+          </ul>
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div class="analogy" style="background: var(--grad-card); border-left-color: var(--ue-yellow);">
+          <span class="emoji">🎧</span>
+          <div class="text">Imagínatelo como <strong>Spotify Premium, pero para viajar en tren por toda Europa</strong>. Y encima te lo paga la UE.</div>
+        </div>
+        <div class="qr-block mt-4">
+          <img src="assets/qr/discovereu.png" alt="QR DiscoverEU">
+          <div class="qr-label">youth.europa.eu/<br>discovereu</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Convocatorias típicas: primavera y otoño. Para 2026, los nacidos entre 1/7/2007 y 30/6/2008. 35.000 plazas por convocatoria. Competido pero accesible. Tiempo: 90s.</aside>
+</section>
+
+<!-- 22 · ERASMUS+ FP -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>OPORTUNIDAD 2 / 3</div>
+  <div style="padding: 80px 80px 40px;">
+    <div class="split">
+      <div style="text-align: center;">
+        <div class="analogy" style="background: var(--grad-card); border-left-color: var(--neon-cyan);">
+          <span class="emoji">🎮</span>
+          <div class="text">Es como un <strong>respawn en otro país con XP boost</strong>: haces tus prácticas de FP en una empresa europea y vuelves con idioma, experiencia y CV brutal.</div>
+        </div>
+        <div class="qr-block mt-4">
+          <img src="assets/qr/erasmus-fp.png" alt="QR Erasmus+ FP">
+          <div class="qr-label">erasmus-plus.ec<br>.europa.eu</div>
+        </div>
+      </div>
+      <div>
+        <div class="opp-card">
+          <span class="opp-icon">💼</span>
+          <div class="opp-meta">
+            <span class="badge badge-yellow">BECA + VIAJE</span>
+            <span class="badge badge-blue">2-12 semanas</span>
+            <span class="badge badge-cyan">FP específico</span>
+          </div>
+          <h3>Erasmus+ para FP</h3>
+          <p style="font-size: 20px; color: var(--text-md);">Prácticas en <strong>empresas europeas</strong>, mientras estudias tu Grado Medio.</p>
+          <ul>
+            <li>Beca mensual según país (más en Dinamarca que en Portugal)</li>
+            <li>Gastos de viaje pagados</li>
+            <li>Tú eliges país si hay convenio</li>
+            <li>Habla con tu coordinador/a del centro 👈</li>
+          </ul>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">CLAVE: Erasmus+ FP es MENOS conocido que Erasmus universitario pero está muy bien financiado. Menos competencia, más probabilidades de irte. Diles que pregunten MAÑANA a su tutor. Tiempo: 90s.</aside>
+</section>
+
+<!-- 23 · EUROPEAN SOLIDARITY CORPS -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>OPORTUNIDAD 3 / 3</div>
+  <div style="padding: 80px 80px 40px;">
+    <div class="split">
+      <div>
+        <div class="opp-card">
+          <span class="opp-icon">🌍</span>
+          <div class="opp-meta">
+            <span class="badge badge-yellow">18-30 años</span>
+            <span class="badge badge-blue">Alojamiento + dietas</span>
+            <span class="badge badge-cyan">2-12 meses</span>
+          </div>
+          <h3>European Solidarity Corps</h3>
+          <p style="font-size: 20px; color: var(--text-md);"><strong>Voluntariado europeo</strong> en proyectos sociales, medioambientales o culturales.</p>
+          <ul>
+            <li>No pagas nada: alojamiento, comida y dieta incluidos</li>
+            <li>Proyectos desde 2 meses a 1 año</li>
+            <li>Ayudar en refugios animales, ONGs, festivales, granjas ecológicas…</li>
+            <li>Ideal para el año después de FP</li>
+          </ul>
+        </div>
+      </div>
+      <div style="text-align: center;">
+        <div class="analogy" style="background: var(--grad-card); border-left-color: var(--neon-pink);">
+          <span class="emoji">🤝</span>
+          <div class="text">Si no tienes claro qué hacer al acabar FP y te apetece un año de <strong>aventura con propósito</strong>, esto es para ti.</div>
+        </div>
+        <div class="qr-block mt-4">
+          <img src="assets/qr/solidarity.png" alt="QR European Solidarity Corps">
+          <div class="qr-label">youth.europa.eu/<br>solidarity</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Perfecto para el hueco entre FP Medio y Superior, o si dudas qué hacer. Impacto social + aventura + CV que destaca. Tiempo: 60s.</aside>
+</section>
+
+<!-- 24 · CÓMO TE APUNTAS HOY -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>AHORA MISMO</div>
+  <div style="padding: 90px 80px 50px; text-align: center;">
+    <h2>Lo tienes <em>aquí</em>. Escanea y ve.</h2>
+    <p class="lead center" style="margin: 20px auto;">No hace falta que te apuntes hoy. Solo que sepas dónde buscar cuando te toque.</p>
+    <div class="chip-row mt-4" style="gap: 30px; margin-top: 50px;">
+      <div class="qr-block"><img src="assets/qr/discovereu.png" alt="DiscoverEU"><div class="qr-label">🚂 DISCOVEREU<br>(Interrail gratis)</div></div>
+      <div class="qr-block"><img src="assets/qr/erasmus-fp.png" alt="Erasmus+"><div class="qr-label">💼 ERASMUS+ FP<br>(prácticas fuera)</div></div>
+      <div class="qr-block"><img src="assets/qr/solidarity.png" alt="Solidarity Corps"><div class="qr-label">🌍 SOLIDARITY CORPS<br>(voluntariado)</div></div>
+      <div class="qr-block"><img src="assets/qr/youth-portal.png" alt="Youth Portal"><div class="qr-label">⭐ PORTAL JUVENTUD<br>(todo junto)</div></div>
+    </div>
+    <p class="muted mt-4" style="margin-top: 40px;">Y si dudas: <strong style="color: var(--ue-yellow);">pregunta mañana a tu tutor/a</strong>. Literal.</p>
+  </div>
+  <aside class="notes">Dales 20 segundos para que escaneen aunque sea uno. Si tienen el móvil fuera, mejor. Tiempo: 45s.</aside>
+</section>
+
+<!-- 25 · BOSS FIGHT INTRO -->
+<section data-background-color="#1a0033">
+  <div class="boss-bg">
+    <h1 style="font-size: clamp(70px, 12vw, 180px) !important; background: linear-gradient(135deg, var(--neon-pink) 0%, var(--ue-yellow) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">BOSS<br>FIGHT</h1>
+    <p class="subtitle" style="margin-top: 30px;">3 preguntas rápidas. A ver si te has enterado 🎮</p>
+  </div>
+  <aside class="notes">Sube energía, tono gaming. Que se piquen. Tiempo: 10s.</aside>
+</section>
+
+<!-- 26 · BOSS Q1 -->
+<section data-background-color="#1a0033" data-quiz="boss1">
+  <div class="boss-bg" style="justify-content: flex-start; padding-top: 140px;">
+    <div class="quiz" style="max-width: 1100px;">
+      <div class="question" style="color: var(--neon-pink);">💡 Si quieres irte de prácticas a una empresa en Berlín…</div>
+      <div class="options">
+        <button class="option" data-letter="A">Voy a mi banco a pedir un préstamo</button>
+        <button class="option" data-letter="B" data-correct>Hablo con mi tutor/a de Erasmus+ FP</button>
+        <button class="option" data-letter="C">Rezo</button>
+        <button class="option" data-letter="D">Le pregunto a un influencer</button>
+      </div>
+      <div class="feedback"></div>
+    </div>
+  </div>
+  <aside class="notes">Respuesta B. Mensaje: lo tienen a un paso, solo tienen que preguntar. Tiempo: 30s.</aside>
+</section>
+
+<!-- 27 · BOSS Q2 -->
+<section data-background-color="#1a0033" data-quiz="boss2">
+  <div class="boss-bg" style="justify-content: flex-start; padding-top: 140px;">
+    <div class="quiz" style="max-width: 1100px;">
+      <div class="question" style="color: var(--neon-pink);">💡 ¿Quién es el JEFE del server UE?</div>
+      <div class="options">
+        <button class="option" data-letter="A">Un rey europeo</button>
+        <button class="option" data-letter="B">Elon Musk</button>
+        <button class="option" data-letter="C" data-correct>No hay uno. Manda el Parlamento + el Consejo</button>
+        <button class="option" data-letter="D">El presidente de EEUU</button>
+      </div>
+      <div class="feedback"></div>
+    </div>
+  </div>
+  <aside class="notes">Trampa: no hay un "presidente de Europa" único. Poder repartido entre varias instituciones. Tiempo: 30s.</aside>
+</section>
+
+<!-- 28 · BOSS Q3 -->
+<section data-background-color="#1a0033" data-quiz="boss3">
+  <div class="boss-bg" style="justify-content: flex-start; padding-top: 140px;">
+    <div class="quiz" style="max-width: 1100px;">
+      <div class="question" style="color: var(--neon-pink);">💡 ¿Cuánto dura un viaje con DiscoverEU?</div>
+      <div class="options">
+        <button class="option" data-letter="A">1 día</button>
+        <button class="option" data-letter="B">3 días</button>
+        <button class="option" data-letter="C" data-correct>Hasta 7 días en 1 mes</button>
+        <button class="option" data-letter="D">1 año entero</button>
+      </div>
+      <div class="feedback"></div>
+    </div>
+  </div>
+  <aside class="notes">Respuesta C. 7 días viajando, dentro de un mes (para que elijas fechas). Tiempo: 30s.</aside>
+</section>
+
+<!-- 29 · RECAP -->
+<section data-background-color="#0B0F1A">
+  <div class="slide-header"><span class="dot"></span>LO QUE TE LLEVAS</div>
+  <div style="padding: 90px 80px 50px;">
+    <h2>3 ideas para que no se te olviden.</h2>
+    <div class="grid grid-3 mt-4">
+      <div class="card" style="border-color: var(--ue-yellow);">
+        <span class="icon">1️⃣</span>
+        <h3>La UE no es política lejana</h3>
+        <p>Es tu WhatsApp sin roaming, tu cargador USB-C, tu protección al comprar online.</p>
+      </div>
+      <div class="card" style="border-color: var(--ue-yellow);">
+        <span class="icon">2️⃣</span>
+        <h3>Tienes derechos europeos</h3>
+        <p>Mudarte, estudiar, trabajar en 27 países. Tu DNI es tu pasaporte.</p>
+      </div>
+      <div class="card" style="border-color: var(--ue-yellow);">
+        <span class="icon">3️⃣</span>
+        <h3>Te espera dinero GRATIS</h3>
+        <p>DiscoverEU, Erasmus+ FP, Solidarity Corps. Apúntate o pierde la oportunidad.</p>
+      </div>
+    </div>
+  </div>
+  <aside class="notes">Resumen ejecutivo. Mensaje final: "No es la UE la que tiene que venir a buscaros. Sois vosotros los que tenéis que ir a por ella." Tiempo: 45s.</aside>
+</section>
+
+<!-- 30 · GRACIAS + PREGUNTAS -->
+<section data-background-color="#0B0F1A">
+  <div class="thanks-bg">
+    <h1 style="font-size: clamp(80px, 14vw, 200px) !important; background: linear-gradient(135deg, var(--ue-yellow) 0%, var(--neon-cyan) 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text;">Gracias 🇪🇺</h1>
+    <p class="subtitle mt-2" style="margin-top: 20px; font-size: 28px;">¿Alguna pregunta?</p>
+    <div class="chip-row mt-4" style="margin-top: 50px;">
+      <span class="badge badge-yellow">#DiscoverEU</span>
+      <span class="badge badge-blue">#ErasmusPlus</span>
+      <span class="badge badge-cyan">#EUSolidarityCorps</span>
+    </div>
+  </div>
+  <aside class="notes">Abre turno de preguntas. Si no hay, lanza tú una: "¿Quién se plantea pedir DiscoverEU al cumplir 18?" Tiempo: 3-5 min.</aside>
+</section>
+
+</div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/dist/reveal.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/reveal.js@5.1.0/plugin/notes/notes.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script src="scripts/quiz.js"></script>
+<script src="scripts/charts.js"></script>
+<script>
+  Reveal.initialize({
+    hash: true,
+    slideNumber: 'c/t',
+    transition: 'slide',
+    transitionSpeed: 'default',
+    backgroundTransition: 'fade',
+    controls: true,
+    progress: true,
+    center: false,
+    width: 1920,
+    height: 1080,
+    margin: 0.04,
+    minScale: 0.2,
+    maxScale: 2.0,
+    plugins: [RevealNotes]
+  });
+  Reveal.on('ready', () => {
+    if (window.UEQuiz) window.UEQuiz.init();
+    if (window.UECharts) window.UECharts.init();
+  });
+  Reveal.on('slidechanged', (e) => {
+    if (window.UECharts) window.UECharts.onSlideChanged(e.currentSlide);
+  });
+</script>
+</body>
+</html>

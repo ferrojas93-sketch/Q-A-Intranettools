@@ -1,0 +1,190 @@
+/* Handout A4 — 1 página imprimible */
+@page {
+  size: A4 portrait;
+  margin: 14mm;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+html, body {
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  color: #0B0F1A;
+  background: #fff;
+  font-size: 11pt;
+  line-height: 1.4;
+  -webkit-print-color-adjust: exact;
+  print-color-adjust: exact;
+}
+
+.handout {
+  max-width: 180mm;
+  margin: 0 auto;
+}
+
+.handout-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #003399 0%, #1a4dc9 100%);
+  color: #fff;
+  border-radius: 8px;
+  margin-bottom: 14px;
+}
+.handout-header h1 {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18pt;
+  letter-spacing: -0.02em;
+}
+.handout-header .stars {
+  color: #FFCC00;
+  font-size: 16pt;
+  letter-spacing: 2px;
+}
+
+.intro {
+  background: #f6f8ff;
+  border-left: 4px solid #FFCC00;
+  padding: 10px 14px;
+  margin-bottom: 14px;
+  font-size: 11pt;
+  border-radius: 4px;
+}
+
+.section-title {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 13pt;
+  color: #003399;
+  margin: 14px 0 8px;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  border-bottom: 2px solid #FFCC00;
+  padding-bottom: 4px;
+}
+
+.grid-3 {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+
+.idea {
+  background: #f6f8ff;
+  border: 1px solid #d6dcec;
+  border-radius: 6px;
+  padding: 10px 12px;
+}
+.idea .num {
+  font-family: 'Space Grotesk', sans-serif;
+  font-size: 18pt;
+  font-weight: 700;
+  color: #003399;
+  display: block;
+  line-height: 1;
+  margin-bottom: 4px;
+}
+.idea h3 {
+  font-size: 11pt;
+  color: #0B0F1A;
+  margin-bottom: 3px;
+}
+.idea p {
+  font-size: 9.5pt;
+  color: #333;
+  line-height: 1.35;
+}
+
+.opps {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 10px;
+}
+.opp {
+  border: 1px solid #d6dcec;
+  border-radius: 6px;
+  padding: 10px 12px;
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+}
+.opp .opp-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+.opp .opp-head .emoji {
+  font-size: 20pt;
+  line-height: 1;
+}
+.opp h3 {
+  font-size: 11.5pt;
+  color: #003399;
+  font-family: 'Space Grotesk', sans-serif;
+}
+.opp .tagline {
+  font-size: 9pt;
+  color: #555;
+  font-style: italic;
+  margin-bottom: 4px;
+}
+.opp ul {
+  list-style: none;
+  padding: 0;
+  margin: 4px 0 8px;
+}
+.opp ul li {
+  font-size: 9.5pt;
+  padding: 2px 0 2px 14px;
+  position: relative;
+  color: #222;
+}
+.opp ul li::before {
+  content: '✓';
+  position: absolute;
+  left: 0;
+  color: #22a055;
+  font-weight: 700;
+}
+.opp .qr-mini {
+  margin-top: auto;
+  text-align: center;
+  padding-top: 6px;
+  border-top: 1px dashed #d6dcec;
+}
+.opp .qr-mini img {
+  width: 70px;
+  height: 70px;
+}
+.opp .qr-mini .qr-label {
+  font-size: 8pt;
+  color: #444;
+  margin-top: 2px;
+  word-break: break-all;
+}
+
+.footer {
+  margin-top: 16px;
+  padding: 10px 14px;
+  background: linear-gradient(90deg, #FFCC00 0%, #ffd633 100%);
+  color: #0B0F1A;
+  border-radius: 6px;
+  font-size: 10pt;
+  text-align: center;
+}
+.footer strong { font-family: 'Space Grotesk', sans-serif; }
+
+.institutions {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px 14px;
+  margin-top: 4px;
+}
+.institutions .inst {
+  font-size: 9.5pt;
+  padding: 3px 0;
+}
+.institutions .inst strong {
+  color: #003399;
+  font-family: 'Space Grotesk', sans-serif;
+}
